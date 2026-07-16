@@ -60,7 +60,8 @@ Eén score van 1–10, opgebouwd uit deelscores (lucht, geluid, verkeer, veiligh
 ## Design
 
 - Stijl: **BrightHouse-look** — koel wit (#f5f7fa), diep navy als tekstkleur (#16243d), helder blauw accent (#1a56db), witte panelen met koele lijnen (#dde3ec), bescheiden afronding (10px). Licht, strak, vertrouwenwekkend. Geen gradients, schaduwzweem, glow of ander generiek "AI-app"-design. (Eerdere iteraties: licht "AI-design" → papieren rapport met serif → sans → donker met signaalgeel → groene veldkaart; Louk vond ze achtereenvolgens te generiek, de serif niks, saai, het zwarte niet mooi, en koos daarna voor branding op zijn eigen BrightHouse Consulting.)
-- Typografie zoals brighthouse.consulting: **Archivo Black** voor koppen (uppercase, weight 400) en **Plus Jakarta Sans** (variabel) voor lopende tekst; labels en datawaardes mono. Lokale woff2-bestanden in `fonts/`, overgenomen van de brandsite; geen CDN, werkt op `file://`.
+- Typografie zoals brighthouse.consulting: **Archivo Black** voor koppen en grote getallen (uppercase, weight 400) en **Plus Jakarta Sans** voor al het andere; labels in Plus Jakarta 800 uppercase met brede letter-spacing, géén monospace (de brandsite gebruikt die nergens). Lokale woff2-bestanden in `fonts/`, favicon `favicon.svg` overgenomen van de brandsite; geen CDN, werkt op `file://`.
+- Scorekleuren zijn de drie merk-tiers uit de AI-scan: groen `#0a8a4a` (7+), amber `#e08a00` (5 tot 7), rood `#d64545` (onder 5). `scoreColor` rondt af op één decimaal zodat de kleur nooit een getoond getal tegenspreekt.
 - Getallen in Nederlandse notatie (komma als decimaalteken), leefscore als rapportcijfer.
 - Geen gedachtestreepjes (—) in UI-teksten; Louk wil die er niet in.
 - Geen ES modules in de HTML: de site moet ook direct vanaf schijf (`file://`) werken.

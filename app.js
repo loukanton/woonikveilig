@@ -687,10 +687,13 @@ function scoreLabel(score) {
 }
 
 function scoreColor(score) {
-  // 1 → rood (hue 8), 10 → groen (hue 140); diep genoeg voor witte tekst
-  // erop en leesbaar op de lichte achtergrond
-  const hue = 8 + ((score - 1) / 9) * 132;
-  return `hsl(${hue} 55% 38%)`;
+  // Drie merk-tierkleuren uit de BrightHouse ai-scan: groen, amber, rood.
+  // Afronden op één decimaal zodat de kleur nooit een getoond getal
+  // tegenspreekt (een 5,0 mag geen "rode" kleur van 4,96 krijgen).
+  const s = Math.round(score * 10) / 10;
+  if (s >= 7) return '#0a8a4a'; // goed
+  if (s >= 5) return '#e08a00'; // matig
+  return '#d64545'; // zwak
 }
 
 function lkiLabel(value) {
@@ -736,12 +739,11 @@ function render(place, data) {
   const box = $('#total-score');
   if (total == null) {
     box.textContent = '?';
-    box.style.background = 'var(--paper-bright)';
-    box.style.color = 'var(--ink-soft)';
+    box.style.color = 'var(--muted)';
     $('#total-label').textContent = 'Geen data beschikbaar';
   } else {
-    box.style.background = scoreColor(total);
-    box.style.color = 'var(--paper-bright)';
+    // Groot getal, gekleurd naar tier (groen/amber/rood)
+    box.style.color = scoreColor(total);
     animateNumber(box, total);
     $('#total-label').textContent = scoreLabel(total);
   }
@@ -1466,7 +1468,7 @@ function renderCard(sel, score, main, explain, details) {
   const badge = $('[data-score]', card);
   if (score == null) {
     badge.textContent = 'geen data';
-    badge.style.background = 'var(--ink-soft)';
+    badge.style.background = 'var(--muted)';
   } else {
     badge.textContent = fmtNum(score);
     badge.style.background = scoreColor(score);
