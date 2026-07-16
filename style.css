@@ -637,19 +637,6 @@ h1 .accent {
 
 .card-more summary:focus-visible { outline: 2px solid var(--pink); outline-offset: 2px; }
 
-.card-note {
-  margin-top: 12px;
-  padding-top: 10px;
-  border-top: 1px solid var(--inner-line);
-  font-size: 0.78rem;
-  font-weight: 500;
-  line-height: 1.5;
-  color: var(--muted);
-  text-wrap: pretty;
-}
-
-.card-note a { color: var(--pink-deep); font-weight: 700; }
-
 .card-details {
   list-style: none;
   margin-top: 8px;
