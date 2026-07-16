@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Woon ik veilig? Het rapport van elke buurt</title>
+  <meta name="description" content="Check elke buurt op geluid, lucht, verkeer, misdaad, gezondheid en omgevingsrisico. Eén leefscore uit open data van RIVM, CBS en politie. Wat Funda je niet vertelt.">
+  <meta property="og:title" content="Woon ik veilig? Het rapport van elke buurt">
+  <meta property="og:description" content="Check elke buurt op geluid, lucht, verkeer, misdaad, gezondheid en omgevingsrisico. Eén leefscore uit open data.">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="nl_NL">
+  <meta name="twitter:card" content="summary">
+  <meta name="theme-color" content="#f5f7fa">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏡</text></svg>">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="masthead">
+    <p class="masthead-top">
+      <span>Open data over wonen</span>
+      <span>RIVM · Luchtmeetnet · PDOK</span>
+    </p>
+    <h1>Woon ik <span class="accent">veilig?</span></h1>
+    <p class="tagline">Het rapport van de buurt: geluid, lucht, verkeer, veiligheid en omgevingsrisico per postcode, uit open data. Wat Funda je niet vertelt.</p>
+    <div class="rule-double" aria-hidden="true"></div>
+  </header>
+
+  <main>
+    <form id="search-form" class="search-bar" autocomplete="off">
+      <input type="text" id="postcode-input" placeholder="Postcode of adres, bijv. 1012JS"
+             inputmode="text" spellcheck="false" required aria-label="Postcode of adres"
+             list="postcode-suggestions">
+      <datalist id="postcode-suggestions"></datalist>
+      <button type="submit" id="search-button">Check de buurt</button>
+    </form>
+
+    <p class="examples">Probeer eens:
+      <button type="button" class="chip" data-q="1012JS">hartje Amsterdam</button>
+      <button type="button" class="chip" data-q="2497ZG">langs de A4</button>
+      <button type="button" class="chip" data-q="8891GT">Terschelling</button>
+    </p>
+
+    <p class="pillars" aria-label="Onderdelen van het rapport">In het rapport: lucht · geluid · verkeer · veiligheid · gezondheid · omgeving</p>
+
+    <section id="status" role="status" aria-live="polite" hidden></section>
+
+    <section id="result" hidden>
+      <p id="location-name" class="location"></p>
+
+      <div class="score-hero">
+        <div class="score-box" id="total-score" aria-label="Leefscore"></div>
+        <div class="score-text">
+          <span class="score-title">Leefscore</span>
+          <span id="total-label" class="score-label"></span>
+          <span class="score-sub">op basis van lucht, geluid, verkeer, veiligheid, gezondheid en omgevingsrisico</span>
+          <button type="button" id="share-button" class="share-button">Deel dit rapport</button>
+        </div>
+      </div>
+
+      <figure class="map-block">
+        <div id="map" aria-label="Kaart van de omgeving, sleep om te verschuiven">
+          <div class="map-canvas"></div>
+          <div class="map-zoom">
+            <button type="button" id="zoom-in" aria-label="Zoom in">+</button>
+            <button type="button" id="zoom-out" aria-label="Zoom uit">&minus;</button>
+          </div>
+        </div>
+        <div id="map-legend" class="map-legend" aria-label="Legenda"></div>
+        <figcaption>
+          <span class="map-layers" role="radiogroup" aria-label="Kaartlaag">
+            <label><input type="radio" name="overlay" value="geluid" checked> geluid</label>
+            <label><input type="radio" name="overlay" value="lucht"> lucht NO&#8322;</label>
+            <label><input type="radio" name="overlay" value="overstroming"> overstroming</label>
+            <label><input type="radio" name="overlay" value="geen"> geen laag</label>
+          </span>
+          <span>kaart PDOK, Kadaster &middot; lagen RIVM</span>
+        </figcaption>
+      </figure>
+
+      <div class="cards">
+        <article class="card" id="card-lucht">
+          <h2><span class="card-index">01</span> Lucht <span class="subscore" data-score></span></h2>
+          <p class="card-main" data-main></p>
+          <p class="card-explain" data-explain></p>
+          <details class="card-more">
+            <summary>Alle cijfers</summary>
+            <ul class="card-details" data-details></ul>
+          </details>
+        </article>
+        <article class="card" id="card-geluid">
+          <h2><span class="card-index">02</span> Geluid <span class="subscore" data-score></span></h2>
+          <p class="card-main" data-main></p>
+          <p class="card-explain" data-explain></p>
+          <details class="card-more">
+            <summary>Alle cijfers</summary>
+            <ul class="card-details" data-details></ul>
+          </details>
+        </article>
+        <article class="card" id="card-verkeer">
+          <h2><span class="card-index">03</span> Verkeer <span class="subscore" data-score></span></h2>
+          <p class="card-main" data-main></p>
+          <p class="card-explain" data-explain></p>
+          <details class="card-more">
+            <summary>Alle cijfers</summary>
+            <ul class="card-details" data-details></ul>
+          </details>
+        </article>
+        <article class="card" id="card-veiligheid">
+          <h2><span class="card-index">04</span> Veiligheid <span class="subscore" data-score></span></h2>
+          <p class="card-main" data-main></p>
+          <p class="card-explain" data-explain></p>
+          <details class="card-more">
+            <summary>Alle cijfers</summary>
+            <ul class="card-details" data-details></ul>
+          </details>
+        </article>
+        <article class="card" id="card-gezondheid">
+          <h2><span class="card-index">05</span> Gezondheid <span class="subscore" data-score></span></h2>
+          <p class="card-main" data-main></p>
+          <p class="card-explain" data-explain></p>
+          <details class="card-more">
+            <summary>Alle cijfers</summary>
+            <ul class="card-details" data-details></ul>
+          </details>
+        </article>
+        <article class="card" id="card-omgeving">
+          <h2><span class="card-index">06</span> Omgeving <span class="subscore" data-score></span></h2>
+          <p class="card-main" data-main></p>
+          <p class="card-explain" data-explain></p>
+          <details class="card-more">
+            <summary>Alle cijfers</summary>
+            <ul class="card-details" data-details></ul>
+          </details>
+        </article>
+      </div>
+
+      <section id="ranking" hidden>
+        <h2 id="ranking-title"></h2>
+        <p id="ranking-sub"></p>
+        <ol id="ranking-list"></ol>
+      </section>
+
+      <p class="disclaimer">
+        Luchtkwaliteit: jaargemiddelde NO₂ en PM2,5 uit de RIVM/NSL-kaart 2024, met de WHO-advieswaarden van 2021 als maatstaf; de actuele index via <a href="https://www.luchtmeetnet.nl" target="_blank" rel="noopener">Luchtmeetnet</a> (RIVM) is ter info en telt niet mee in de score, zodat het cijfer niet met het weer verandert.
+        Geluid: RIVM geluidkaart 2020 (L<sub>den</sub>, jaargemiddelde etmaalbelasting); industriegeluid: RIVM actuele kaart.
+        Veiligheid: geregistreerde misdrijven per buurt, laatste 12 maanden (politie via CBS), buurtgrenzen en inwoners CBS 2024.
+        Overstromingskans: RIVM/LIWO 2023. Nucleaire installaties: RIVM.
+        Gezondheid: RIVM Gezondheidsmonitor 2024, modelschattingen per buurt (18 jaar en ouder).
+        Sterfte en doodsoorzaken: CBS per gemeente, meest recente jaar. Absolute sterfte telt niet mee in de score (die hangt sterk samen met leeftijdsopbouw); een aandeel kanker of ademhalingsziekten duidelijk boven landelijk geeft wel aftrek.
+        Ranglijst: vergelijkingscijfer per buurt uit alleen veiligheid (misdrijven per 1.000 inwoners) en gezondheid (ervaren gezondheid); de andere onderdelen zijn niet per buurt in bulk beschikbaar, dus dit is bewust geen volledige leefscore.
+        Militaire complexen: vaste lijst van publiek bekende locaties (vliegbases, marine, hoofdkwartieren, radar); indicatief, geen officiële risicokaart.
+        Locatie: PDOK. De leefscore is een indicatie op basis van het midden van de postcode, geen officieel oordeel.
+      </p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>Een initiatief van <strong>BrightHouse Consulting</strong>. Vragen of een fout gezien? Mail <a href="mailto:media@loukhaarhuis.nl">media@loukhaarhuis.nl</a>.</p>
+    <p>Geen cookies, geen tracking. Alle data komt live uit open bronnen; aan dit rapport kunnen geen rechten worden ontleend.</p>
+  </footer>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
