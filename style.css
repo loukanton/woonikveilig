@@ -55,16 +55,7 @@ header, main {
   padding: 0 24px;
 }
 
-/* Merkbalk boven de pagina */
-.site-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 24px 0 14px;
-  border-bottom: 2px solid var(--ink);
-}
-
+/* Wordmark (alleen in de footer) */
 .masthead {
   font-family: var(--font-display);
   font-size: 22px;
@@ -93,17 +84,8 @@ header, main {
   background: var(--ink);
 }
 
-.site-head-tag {
-  font-weight: 800;
-  font-size: 0.68rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--muted);
-  white-space: nowrap;
-}
-
 /* Hero */
-.hero { padding: 60px 0 44px; text-align: center; }
+.hero { padding: 64px 0 44px; text-align: center; }
 
 .eyebrow {
   display: inline-flex;
@@ -821,6 +803,13 @@ button.rank-name:focus-visible { outline: 2px solid var(--pink); outline-offset:
 .site-footer a { color: var(--pink-deep); font-weight: 700; }
 .site-footer strong { color: var(--ink); }
 .site-footer p { margin-bottom: 6px; }
+
+.footer-mark {
+  display: inline-block;
+  margin-bottom: 16px;
+  font-size: 26px;
+}
+.footer-mark:hover { color: var(--ink); }
 
 /* Respecteer prefers-reduced-motion */
 @media (prefers-reduced-motion: reduce) {
