@@ -37,6 +37,7 @@ Doelgroep: huizenkopers die een postcode intypen en in één oogopslag willen zi
 | CBS kerncijfers | sterfte per 1.000 inwoners per gemeente (tabel 70072ned) | `opendata.cbs.nl/ODataApi/odata/70072ned` |
 | CBS doodsoorzaken | kanker/ademhaling in sterfgevallen per gemeente, NL-referentie is RegioS `'NL01  '` (tabel 80142ned; let op: 80202ned heeft maar 25 gemeenten) | `opendata.cbs.nl/ODataApi/odata/80142ned` |
 | Militaire complexen | vaste lijst publiek bekende locaties (vliegbases, marine, NAVO, radar) hardcoded in `app.js` | geen API |
+| Zendmasten (5G) | geen bruikbare CORS-API en geen automatiseerbare export; daarom alleen een neutrale link naar het Antenneregister onder Omgeving, zonder scoregewicht. RF-straling van masten zit ver onder de norm, dus bewust géén risicofactor | link-out `antenneregister.nl/viewer` |
 
 Check bij nieuwe bronnen altijd eerst of CORS werkt (`Access-Control-Allow-Origin`) voordat je erop bouwt.
 
