@@ -11,7 +11,7 @@ Doelgroep: huizenkopers die een postcode intypen en in één oogopslag willen zi
 ## Wie werkt eraan
 
 - **Louk** (loukanton@gmail.com) — solo project. Communicatie in het Nederlands.
-- Afzender op de site: **BrightHouse Consulting** (Louks eigen merk), contact via `media@loukhaarhuis.nl` (eigen domein als vangnet; vervangen zodra er een BrightHouse-domein is).
+- Afzender op de site: **BrightHouse Consulting** (Louks eigen merk), contact via `media@brighthouse.consulting`.
 
 ## Technische keuzes
 
