@@ -1,10 +1,19 @@
 /* Woon ik veilig? — BrightHouse-huisstijl: wit, diep navy (#08304c) en
    merk-roze (#f83898) met het kenmerkende blok-met-slagschaduw uit het
-   logo. Koppen in Bricolage Grotesque (lokaal bestand), data in mono. */
+   logo. Typografie zoals brighthouse.consulting: Archivo Black voor
+   koppen, Plus Jakarta Sans voor tekst, mono voor data. */
 
 @font-face {
-  font-family: 'Bricolage Grotesque';
-  src: url('fonts/BricolageGrotesque.woff2') format('woff2');
+  font-family: 'Archivo Black';
+  src: url('fonts/ArchivoBlack.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  src: url('fonts/PlusJakartaSans.woff2') format('woff2');
   font-weight: 200 800;
   font-style: normal;
   font-display: swap;
@@ -18,7 +27,8 @@
   --accent: #f83898;        /* BrightHouse-roze */
   --hairline: #e3e8ee;      /* koele lijnen */
   --error: #b3402f;
-  --font: 'Bricolage Grotesque', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: 'Archivo Black', 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
   --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
   --radius: 10px;
 }
@@ -59,10 +69,12 @@ header, main {
 .masthead-top span { white-space: nowrap; }
 
 h1 {
-  font-size: clamp(2.6rem, 8vw, 3.8rem);
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-size: clamp(2.2rem, 7vw, 3.4rem);
+  font-weight: 400;
   letter-spacing: -0.02em;
-  line-height: 1.05;
+  line-height: 0.95;
+  text-transform: uppercase;
   margin: 0;
   text-wrap: balance;
 }
@@ -250,8 +262,9 @@ h1 .accent {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2.9rem;
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  font-weight: 400;
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;
 }
@@ -268,8 +281,10 @@ h1 .accent {
 }
 
 .score-label {
-  font-size: 2rem;
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-size: 1.7rem;
+  font-weight: 400;
+  text-transform: uppercase;
   letter-spacing: -0.01em;
   line-height: 1.15;
 }
