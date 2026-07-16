@@ -73,6 +73,15 @@ const AFFILIATE = {
   text: 'Laat een bouwkundige keuring doen voordat je een bod uitbrengt. Dat kost een paar honderd euro en voorkomt dure verrassingen achter de voordeur.',
   button: 'Vraag een bouwkundige keuring aan',
 };
+
+// Privacyregel eerlijk houden: zonder affiliate plaatst de site niets. Zodra
+// affiliate aanstaat gaat een klik op de advertentielink via Daisycon, dat
+// een cookie zet om de klik toe te rekenen. Dat moeten we bezoekers melden.
+if (AFFILIATE.enabled && AFFILIATE.url) {
+  $('#privacy-note').textContent = 'De site zelf plaatst geen cookies en houdt je niet bij. '
+    + 'Klik je op een advertentielink, dan gebruikt de adverteerder via Daisycon een cookie '
+    + 'om die klik te registreren.';
+}
 const statusEl = $('#status');
 const resultEl = $('#result');
 const form = $('#search-form');
