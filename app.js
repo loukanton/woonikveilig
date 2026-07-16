@@ -749,20 +749,30 @@ async function renderRanking(buurt, crime) {
       .map(([code, total]) => ({ code, total, residents: residents.get(code), name: names.get(code) ?? code }))
       .filter((b) => b.residents >= RANKING_MIN_RESIDENTS)
       .map((b) => {
+        const per1000 = (b.total / b.residents) * 1000;
+        const healthPct = health.get(b.code) ?? null;
+        // Zelfde deelscores en onderlinge weging als het rapport, alleen
+        // voor de volgorde; in beeld staan de kale cijfers zelf, zodat
+        // niemand dit met de leefscore verwart.
         const parts = [
-          { score: scoreFromCrime({ per1000: (b.total / b.residents) * 1000 }), weight: SCORING.weights.veiligheid },
-          { score: scoreFromHealth({ goodHealth: health.get(b.code) ?? null }), weight: SCORING.weights.gezondheid },
+          { score: scoreFromCrime({ per1000 }), weight: SCORING.weights.veiligheid },
+          { score: scoreFromHealth({ goodHealth: healthPct }), weight: SCORING.weights.gezondheid },
         ].filter((p) => p.score != null);
         const weightSum = parts.reduce((s, p) => s + p.weight, 0);
-        return { ...b, score: weightSum ? parts.reduce((s, p) => s + p.score * p.weight, 0) / weightSum : null };
+        return {
+          ...b,
+          per1000,
+          healthPct,
+          score: weightSum ? parts.reduce((s, p) => s + p.score * p.weight, 0) / weightSum : null,
+        };
       })
       .filter((b) => b.score != null)
       .sort((a, b) => b.score - a.score);
     if (ranked.length < 2) { section.hidden = true; return; } // niets te vergelijken
 
     $('#ranking-sub').textContent = `${ranked.length} buurten met minstens ${RANKING_MIN_RESIDENTS} inwoners, `
-      + 'vergeleken op veiligheid (misdrijven, 12 maanden) en gezondheid (ervaren gezondheid 2024). '
-      + 'Dit vergelijkingscijfer is geen volledige leefscore; klik op een buurt voor het hele rapport.';
+      + 'gerangschikt op veiligheid en gezondheid samen. Per buurt: misdrijven per 1.000 inwoners '
+      + 'en het deel dat zich gezond voelt. Klik op een buurt voor het volledige rapport met leefscore.';
 
     const rows = ranked.slice(0, 20).map((b, i) => ({ ...b, rank: i + 1 }));
     const currentIndex = ranked.findIndex((b) => b.code === buurt.code);
@@ -794,8 +804,9 @@ async function renderRanking(buurt, crime) {
       name.classList.add('rank-name');
       const value = document.createElement('span');
       value.className = 'rank-value';
-      value.textContent = fmtNum(b.score);
-      value.style.color = scoreColor(b.score);
+      value.textContent = b.healthPct != null
+        ? `${fmtNum(b.per1000, 0)} · ${fmtNum(b.healthPct, 0)}%`
+        : fmtNum(b.per1000, 0);
       li.append(rank, name, value);
       list.append(li);
     }
