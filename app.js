@@ -61,6 +61,18 @@ const SCORING = {
 
 const $ = (sel, root = document) => root.querySelector(sel);
 let lastResult = null; // { name, score } van het laatst getoonde rapport, voor de deelknop
+
+// Affiliate-blok onder het rapport. Zet enabled op true en vul de url zodra
+// er een affiliateprogramma is (bijv. bouwkundige keuring via Daisycon of
+// TradeTracker). Zonder url blijft het blok verborgen. De reclame-melding
+// eronder is wettelijk verplicht en blijft altijd staan.
+const AFFILIATE = {
+  enabled: false,
+  url: '',
+  title: 'Serieus over dit huis?',
+  text: 'Laat een bouwkundige keuring doen voordat je een bod uitbrengt. Dat kost een paar honderd euro en voorkomt dure verrassingen achter de voordeur.',
+  button: 'Vraag een bouwkundige keuring aan',
+};
 const statusEl = $('#status');
 const resultEl = $('#result');
 const form = $('#search-form');
@@ -733,9 +745,24 @@ function render(place, data) {
   renderCard('#card-gezondheid', subscores.gezondheid, gezondheidMain(data.gezondheid), gezondheidExplain(data.gezondheid), gezondheidDetails(data.gezondheid));
   renderCard('#card-omgeving', subscores.omgeving, omgevingMain(data.omgeving), omgevingExplain(data.omgeving), omgevingDetails(data.omgeving));
 
+  renderAffiliate();
   resultEl.hidden = false;
   renderMap(place.lon, place.lat); // na het tonen, anders is de breedte nog 0
   renderRanking(data.veiligheid.buurt, data.veiligheid.crime, data.gezondheid?.causes); // laadt asynchroon verder
+}
+
+function renderAffiliate() {
+  const section = $('#affiliate');
+  if (!AFFILIATE.enabled || !AFFILIATE.url) {
+    section.hidden = true;
+    return;
+  }
+  $('#affiliate-title').textContent = AFFILIATE.title;
+  $('#affiliate-text').textContent = AFFILIATE.text;
+  const link = $('#affiliate-link');
+  link.textContent = AFFILIATE.button;
+  link.href = AFFILIATE.url;
+  section.hidden = false;
 }
 
 // ---------- Ranglijst beste buurten van de gemeente ----------
@@ -828,7 +855,8 @@ async function renderRanking(buurt, crime, causes) {
 
     $('#ranking-sub').textContent = `De ${ranked.length} kansrijkste van ${candidates.length} buurten `
       + `(minstens ${RANKING_MIN_RESIDENTS} inwoners) volledig doorgerekend op alle zes onderdelen, `
-      + 'op het middelpunt van elke buurt. Klik op een buurt voor het rapport.';
+      + 'op het middelpunt van elke buurt. Jouw rapport hierboven rekent op je eigen adres of postcode; '
+      + 'dat kan iets afwijken van het buurtmiddelpunt. Klik op een buurt voor het rapport.';
 
     const rows = ranked.slice(0, 20).map((b, i) => ({ ...b, rank: i + 1 }));
     const currentIndex = ranked.findIndex((b) => b.code === buurt.code);

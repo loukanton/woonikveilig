@@ -565,6 +565,59 @@ h1 .accent {
   to { transform: scaleX(1); }
 }
 
+/* Affiliate-blok */
+.affiliate {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-top: 48px;
+  padding: 20px;
+  background: var(--paper-bright);
+  border: 1.5px solid var(--hairline);
+  border-radius: var(--radius);
+}
+
+.affiliate-body { flex: 1; min-width: 240px; }
+
+.affiliate h2 {
+  margin: 0 0 4px;
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.affiliate p { margin: 0; font-size: 0.9rem; color: var(--ink-soft); text-wrap: pretty; }
+
+.affiliate-action { display: flex; flex-direction: column; gap: 6px; }
+
+#affiliate-link {
+  display: inline-block;
+  padding: 12px 22px;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: #fff;
+  font-weight: 650;
+  font-size: 0.95rem;
+  text-decoration: none;
+  text-align: center;
+}
+
+#affiliate-link:hover { background: #cc2278; }
+
+#affiliate-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.affiliate-note {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
 /* Ranglijst */
 #ranking { margin-top: 48px; }
 
