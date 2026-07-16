@@ -78,7 +78,7 @@ const AFFILIATE = {
 // affiliate aanstaat gaat een klik op de advertentielink via Daisycon, dat
 // een cookie zet om de klik toe te rekenen. Dat moeten we bezoekers melden.
 if (AFFILIATE.enabled && AFFILIATE.url) {
-  $('#privacy-note').textContent = 'De site zelf plaatst geen cookies en houdt je niet bij. '
+  $('#privacy-note').textContent = 'De site plaatst zelf geen cookies en meet alleen anoniem bezoek via Cloudflare. '
     + 'Klik je op een advertentielink, dan gebruikt de adverteerder via Daisycon een cookie '
     + 'om die klik te registreren.';
 }
