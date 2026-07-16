@@ -53,6 +53,7 @@
         <div class="score-text">
           <span class="score-title">Leefscore</span>
           <span id="total-label" class="score-label"></span>
+          <p id="score-reason" class="score-reason"></p>
           <span class="score-sub">op basis van lucht, geluid, verkeer, veiligheid, gezondheid en omgevingsrisico</span>
           <button type="button" id="share-button" class="share-button">Deel dit rapport</button>
         </div>
@@ -138,7 +139,20 @@
       <section id="ranking" hidden>
         <h2 id="ranking-title"></h2>
         <p id="ranking-sub"></p>
-        <ol id="ranking-list"></ol>
+        <div class="ranking-panel">
+          <table id="ranking-table">
+            <thead>
+              <tr>
+                <th class="rank" aria-label="Positie"></th>
+                <th>Buurt</th>
+                <th class="num">Leefscore</th>
+                <th class="num extra">Misdrijven per 1.000 inwoners</th>
+                <th class="num extra">Voelt zich gezond</th>
+              </tr>
+            </thead>
+            <tbody id="ranking-list"></tbody>
+          </table>
+        </div>
       </section>
 
       <p class="disclaimer">
@@ -148,7 +162,7 @@
         Overstromingskans: RIVM/LIWO 2023. Nucleaire installaties: RIVM.
         Gezondheid: RIVM Gezondheidsmonitor 2024, modelschattingen per buurt (18 jaar en ouder).
         Sterfte en doodsoorzaken: CBS per gemeente, meest recente jaar. Absolute sterfte telt niet mee in de score (die hangt sterk samen met leeftijdsopbouw); een aandeel kanker of ademhalingsziekten duidelijk boven landelijk geeft wel aftrek.
-        Ranglijst: volgorde op veiligheid (misdrijven per 1.000 inwoners) en gezondheid (ervaren gezondheid) samen; de getoonde cijfers zijn die twee waardes zelf. De andere onderdelen zijn niet per buurt in bulk beschikbaar, dus dit is bewust geen leefscore.
+        Ranglijst: voorselectie van de kansrijkste buurten op veiligheid en gezondheid (de enige onderdelen die per buurt in bulk beschikbaar zijn), daarna per buurt de volledige leefscore doorgerekend op het middelpunt van de buurt.
         Militaire complexen: vaste lijst van publiek bekende locaties (vliegbases, marine, hoofdkwartieren, radar); indicatief, geen officiële risicokaart.
         Locatie: PDOK. De leefscore is een indicatie op basis van het midden van de postcode, geen officieel oordeel.
       </p>

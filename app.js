@@ -498,30 +498,40 @@ function nearestMilitary(lon, lat) {
   return nearest;
 }
 
-// Dichtstbijzijnde nucleaire installatie (RIVM-lijst, ook net over de grens)
-async function fetchNearestNuclear(rd) {
-  const params = new URLSearchParams({
-    service: 'WFS', version: '2.0.0', request: 'GetFeature',
-    typeNames: NUCLEAR_LAYER,
-    outputFormat: 'application/json',
-    count: '100',
-  });
-  try {
-    const json = await fetchJson(`${WFS_URL}?${params}`);
-    let nearest = null;
-    for (const f of json.features ?? []) {
-      const [x, y] = f.geometry?.coordinates ?? [];
-      if (typeof x !== 'number') continue;
-      const km = Math.hypot(x - rd.x, y - rd.y) / 1000;
-      if (!nearest || km < nearest.km) {
-        nearest = { km, name: f.properties?.naam, type: f.properties?.type };
-      }
-    }
-    return nearest;
-  } catch (err) {
-    console.warn('Nucleaire installaties mislukt:', err);
-    return null;
+// Nucleaire installaties (RIVM-lijst, ook net over de grens); eenmalig
+// opgehaald en daarna gecachet, de ranglijst gebruikt hem per buurt
+let nuclearSitesPromise = null;
+
+function fetchNuclearSites() {
+  if (!nuclearSitesPromise) {
+    const params = new URLSearchParams({
+      service: 'WFS', version: '2.0.0', request: 'GetFeature',
+      typeNames: NUCLEAR_LAYER,
+      outputFormat: 'application/json',
+      count: '100',
+    });
+    nuclearSitesPromise = fetchJson(`${WFS_URL}?${params}`)
+      .then((json) => json.features ?? [])
+      .catch((err) => {
+        console.warn('Nucleaire installaties mislukt:', err);
+        nuclearSitesPromise = null;
+        return [];
+      });
   }
+  return nuclearSitesPromise;
+}
+
+async function fetchNearestNuclear(rd) {
+  let nearest = null;
+  for (const f of await fetchNuclearSites()) {
+    const [x, y] = f.geometry?.coordinates ?? [];
+    if (typeof x !== 'number') continue;
+    const km = Math.hypot(x - rd.x, y - rd.y) / 1000;
+    if (!nearest || km < nearest.km) {
+      nearest = { km, name: f.properties?.naam, type: f.properties?.type };
+    }
+  }
+  return nearest;
 }
 
 async function fetchJson(url) {
@@ -622,6 +632,31 @@ const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 
 // ---------- Labels ----------
 
+const SUBSCORE_LABELS = {
+  lucht: 'lucht',
+  geluid: 'geluid',
+  verkeer: 'verkeer',
+  veiligheid: 'veiligheid',
+  gezondheid: 'gezondheid',
+  omgeving: 'de omgeving',
+};
+
+// Kort zinnetje bij de leefscore: wat tilt het cijfer, wat drukt het
+function scoreReason(subscores) {
+  const entries = Object.entries(subscores).filter(([, v]) => v != null);
+  if (entries.length < 2) return '';
+  const sorted = [...entries].sort((a, b) => b[1] - a[1]);
+  const [bestKey, bestVal] = sorted[0];
+  const [worstKey, worstVal] = sorted.at(-1);
+  if (worstVal >= 7) {
+    return `Alle onderdelen scoren hier ruim voldoende; ${SUBSCORE_LABELS[bestKey]} springt eruit met een ${fmtNum(bestVal)}.`;
+  }
+  if (bestVal - worstVal < 1.5) {
+    return 'Geen grote uitschieters: alle onderdelen liggen dicht bij elkaar.';
+  }
+  return `Het cijfer leunt op ${SUBSCORE_LABELS[bestKey]} (${fmtNum(bestVal)}), maar ${SUBSCORE_LABELS[worstKey]} drukt het met een ${fmtNum(worstVal)}.`;
+}
+
 function scoreLabel(score) {
   if (score >= 8.5) return 'Uitstekend';
   if (score >= 7) return 'Goed';
@@ -689,6 +724,7 @@ function render(place, data) {
     animateNumber(box, total);
     $('#total-label').textContent = scoreLabel(total);
   }
+  $('#score-reason').textContent = total != null ? scoreReason(subscores) : '';
 
   renderCard('#card-lucht', subscores.lucht, luchtMain(data.lucht), luchtExplain(data.lucht), luchtDetails(data.lucht));
   renderCard('#card-geluid', subscores.geluid, geluidMain(data.geluid), geluidExplain(data.geluid), geluidDetails(data.geluid));
@@ -699,7 +735,7 @@ function render(place, data) {
 
   resultEl.hidden = false;
   renderMap(place.lon, place.lat); // na het tonen, anders is de breedte nog 0
-  renderRanking(data.veiligheid.buurt, data.veiligheid.crime); // laadt asynchroon verder
+  renderRanking(data.veiligheid.buurt, data.veiligheid.crime, data.gezondheid?.causes); // laadt asynchroon verder
 }
 
 // ---------- Ranglijst beste buurten van de gemeente ----------
@@ -710,8 +746,10 @@ function render(place, data) {
 // mee; daar maakt één incident de cijfers al onbruikbaar.
 
 const RANKING_MIN_RESIDENTS = 200;
+// Zo veel kandidaten uit de voorselectie rekenen we volledig door
+const RANKING_SHORTLIST = 24;
 
-async function renderRanking(buurt, crime) {
+async function renderRanking(buurt, crime, causes) {
   const section = $('#ranking');
   section.hidden = true;
   if (!buurt || !crime?.periods?.length) return;
@@ -719,7 +757,7 @@ async function renderRanking(buurt, crime) {
 
   // Structureel skelet zolang de gemeentedata laadt
   $('#ranking-title').textContent = `Beste buurten van gemeente ${buurt.gemeente.name}`;
-  $('#ranking-sub').textContent = 'Buurten van de gemeente vergelijken…';
+  $('#ranking-sub').textContent = 'Kansrijkste buurten selecteren en volledig doorrekenen, dit duurt even…';
   renderSkeletonRows($('#ranking-list'), 8);
   section.hidden = false;
 
@@ -745,15 +783,15 @@ async function renderRanking(buurt, crime) {
       totals.set(code, (totals.get(code) ?? 0) + (row.GeregistreerdeMisdrijven_1 ?? 0));
     }
 
-    const ranked = [...totals.entries()]
+    // Voorselectie op de onderdelen die in bulk beschikbaar zijn (veiligheid
+    // en gezondheid, zelfde weging als het rapport); de kansrijkste
+    // kandidaten rekenen we daarna volledig door.
+    const candidates = [...totals.entries()]
       .map(([code, total]) => ({ code, total, residents: residents.get(code), name: names.get(code) ?? code }))
       .filter((b) => b.residents >= RANKING_MIN_RESIDENTS)
       .map((b) => {
         const per1000 = (b.total / b.residents) * 1000;
         const healthPct = health.get(b.code) ?? null;
-        // Zelfde deelscores en onderlinge weging als het rapport, alleen
-        // voor de volgorde; in beeld staan de kale cijfers zelf, zodat
-        // niemand dit met de leefscore verwart.
         const parts = [
           { score: scoreFromCrime({ per1000 }), weight: SCORING.weights.veiligheid },
           { score: scoreFromHealth({ goodHealth: healthPct }), weight: SCORING.weights.gezondheid },
@@ -763,16 +801,34 @@ async function renderRanking(buurt, crime) {
           ...b,
           per1000,
           healthPct,
-          score: weightSum ? parts.reduce((s, p) => s + p.score * p.weight, 0) / weightSum : null,
+          compareScore: weightSum ? parts.reduce((s, p) => s + p.score * p.weight, 0) / weightSum : null,
         };
       })
-      .filter((b) => b.score != null)
-      .sort((a, b) => b.score - a.score);
-    if (ranked.length < 2) { section.hidden = true; return; } // niets te vergelijken
+      .filter((b) => b.compareScore != null)
+      .sort((a, b) => b.compareScore - a.compareScore);
+    if (candidates.length < 2) { section.hidden = true; return; } // niets te vergelijken
 
-    $('#ranking-sub').textContent = `${ranked.length} buurten met minstens ${RANKING_MIN_RESIDENTS} inwoners, `
-      + 'gerangschikt op veiligheid en gezondheid samen. Per buurt: misdrijven per 1.000 inwoners '
-      + 'en het deel dat zich gezond voelt. Klik op een buurt voor het volledige rapport met leefscore.';
+    const shortlist = candidates.slice(0, RANKING_SHORTLIST);
+    if (!shortlist.some((b) => b.code === buurt.code)) {
+      const current = candidates.find((b) => b.code === buurt.code);
+      if (current) shortlist.push(current);
+    }
+
+    // Volledige leefscore per kandidaat, in kleine groepjes om de kaartservers te sparen
+    for (let i = 0; i < shortlist.length; i += 3) {
+      await Promise.all(shortlist.slice(i, i + 3).map(async (b) => {
+        b.leefscore = await computeBuurtLeefscore(b, causes);
+      }));
+    }
+
+    const ranked = shortlist
+      .filter((b) => b.leefscore != null)
+      .sort((a, b) => b.leefscore - a.leefscore);
+    if (ranked.length < 2) { section.hidden = true; return; }
+
+    $('#ranking-sub').textContent = `De ${ranked.length} kansrijkste van ${candidates.length} buurten `
+      + `(minstens ${RANKING_MIN_RESIDENTS} inwoners) volledig doorgerekend op alle zes onderdelen, `
+      + 'op het middelpunt van elke buurt. Klik op een buurt voor het rapport.';
 
     const rows = ranked.slice(0, 20).map((b, i) => ({ ...b, rank: i + 1 }));
     const currentIndex = ranked.findIndex((b) => b.code === buurt.code);
@@ -781,34 +837,48 @@ async function renderRanking(buurt, crime) {
     const list = $('#ranking-list');
     list.innerHTML = '';
     for (const b of rows) {
-      const li = document.createElement('li');
-      if (b.code === buurt.code) li.classList.add('current');
-      if (b.gap) li.classList.add('gap');
-      const rank = document.createElement('span');
+      const tr = document.createElement('tr');
+      if (b.code === buurt.code) tr.classList.add('current');
+      if (b.gap) tr.classList.add('gap');
+
+      const rank = document.createElement('td');
       rank.className = 'rank';
-      rank.textContent = `${b.rank}.`;
-      let name;
+      // Buiten de top 20 is de positie binnen de doorgerekende selectie
+      // geen echte gemeentepositie; toon dan geen nummer.
+      rank.textContent = b.gap ? '…' : `${b.rank}.`;
+
+      const nameCell = document.createElement('td');
+      nameCell.className = 'rank-name-cell';
       if (b.code === buurt.code) {
-        name = document.createElement('span');
-        name.textContent = `${b.name} (deze buurt)`;
+        nameCell.textContent = `${b.name} (deze buurt)`;
       } else {
         // Andere buurten zijn aanklikbaar en openen hun eigen rapport
-        name = document.createElement('button');
-        name.type = 'button';
-        name.textContent = b.name;
-        name.addEventListener('click', () => {
+        const link = document.createElement('button');
+        link.type = 'button';
+        link.className = 'rank-name';
+        link.textContent = b.name;
+        link.addEventListener('click', () => {
           window.scrollTo({ top: 0 });
           lookupBuurt(b.code);
         });
+        nameCell.append(link);
       }
-      name.classList.add('rank-name');
-      const value = document.createElement('span');
-      value.className = 'rank-value';
-      value.textContent = b.healthPct != null
-        ? `${fmtNum(b.per1000, 0)} · ${fmtNum(b.healthPct, 0)}%`
-        : fmtNum(b.per1000, 0);
-      li.append(rank, name, value);
-      list.append(li);
+
+      const scoreCell = document.createElement('td');
+      scoreCell.className = 'num leefscore';
+      scoreCell.textContent = fmtNum(b.leefscore);
+      scoreCell.style.color = scoreColor(b.leefscore);
+
+      const crimeCell = document.createElement('td');
+      crimeCell.className = 'num extra';
+      crimeCell.textContent = fmtNum(b.per1000, 0);
+
+      const healthCell = document.createElement('td');
+      healthCell.className = 'num extra';
+      healthCell.textContent = b.healthPct != null ? `${fmtNum(b.healthPct, 0)}%` : 'geen data';
+
+      tr.append(rank, nameCell, scoreCell, crimeCell, healthCell);
+      list.append(tr);
     }
   } catch (err) {
     section.hidden = true;
@@ -816,18 +886,52 @@ async function renderRanking(buurt, crime) {
   }
 }
 
+// Volledige leefscore voor het middelpunt van een buurt, met dezelfde
+// scorefuncties en weging als het rapport. Veiligheid en gezondheid komen
+// uit de bulkdata; de kaartlagen worden per buurt geprikt.
+async function computeBuurtLeefscore(candidate, causes) {
+  try {
+    const place = await geocodeBuurt(candidate.code);
+    const [annual, ldenTotal, ldenRoad, ldenRail, ldenAir, flood, industry, nuclear] = await Promise.all([
+      fetchAnnualAir(place.lon, place.lat),
+      fetchLden(NOISE_LAYERS.total, place.lon, place.lat),
+      fetchLden(NOISE_LAYERS.road, place.lon, place.lat),
+      fetchLden(NOISE_LAYERS.rail, place.lon, place.lat),
+      fetchLden(NOISE_LAYERS.air, place.lon, place.lat),
+      fetchFlood(place.lon, place.lat),
+      fetchLden(NOISE_LAYERS.industry, place.lon, place.lat),
+      fetchNearestNuclear(place.rd),
+    ]);
+    const subscores = {
+      lucht: scoreFromAnnualAir(annual),
+      geluid: scoreFromLden(ldenTotal),
+      verkeer: scoreFromLden(loudestTrafficSource({ road: ldenRoad, rail: ldenRail, air: ldenAir })),
+      veiligheid: scoreFromCrime({ per1000: candidate.per1000 }),
+      gezondheid: scoreFromHealth({ goodHealth: candidate.healthPct }, causes),
+      omgeving: omgevingScore({ flood, nuclear, industry, military: nearestMilitary(place.lon, place.lat) }),
+    };
+    return totalScore(subscores);
+  } catch (err) {
+    console.warn(`Leefscore voor ${candidate.code} mislukt:`, err);
+    return null;
+  }
+}
+
 function renderSkeletonRows(list, count) {
   list.innerHTML = '';
   for (let i = 0; i < count; i++) {
-    const li = document.createElement('li');
-    li.className = 'skeleton';
-    const rank = document.createElement('span');
+    const tr = document.createElement('tr');
+    tr.className = 'skeleton';
+    const rank = document.createElement('td');
     rank.className = 'rank';
     rank.textContent = `${i + 1}.`;
+    const cell = document.createElement('td');
+    cell.colSpan = 4;
     const bar = document.createElement('span');
     bar.className = 'skeleton-bar';
-    li.append(rank, bar);
-    list.append(li);
+    cell.append(bar);
+    tr.append(rank, cell);
+    list.append(tr);
   }
 }
 

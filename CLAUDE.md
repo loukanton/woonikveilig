@@ -47,7 +47,7 @@ Eén score van 1–10, opgebouwd uit deelscores (lucht, geluid, verkeer, veiligh
 - Ontbrekende data eerlijk tonen ("geen data") en niet meewegen, nooit stilzwijgend een neutrale waarde invullen.
 - Weging en drempels staan op één plek in de code, met bronvermelding (bijv. WHO-advieswaarden).
 - De score is stabiel: actuele metingen (zoals de LKI van dit uur) tellen niet mee, alleen jaargemiddelden en periodieke cijfers. Live waardes tonen mag, maar als info naast de score.
-- De buurtenranglijst is een vergelijkingscijfer uit alleen veiligheid en gezondheid, bewust geen volledige leefscore; dat staat er ook bij in de UI.
+- De buurtenranglijst toont echte leefscores: voorselectie van ~24 kandidaten op veiligheid en gezondheid (de enige bulk-beschikbare onderdelen), daarna elke kandidaat volledig doorgerekend op het buurtmiddelpunt (batches van 3, ~200 kaart-prikjes). Methode staat in de UI en bronvermelding.
 
 ## Structuur
 
