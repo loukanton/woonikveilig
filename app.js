@@ -32,6 +32,8 @@ const NOISE_LAYERS = {
 
 const FLOOD_LAYER = '20231201_kans_overstroming';
 const NUCLEAR_LAYER = 'rivm_01092021_nucleaire_installaties';
+const POWERLINE_WFS = 'https://data.rivm.nl/geo/nl/wfs'; // RIVM-netkaart hoogspanningslijnen
+const POWERLINE_LAYER = 'nl:netkaart_actuele_versie_atlas_rivm';
 
 // Klassen uit de legenda van de RIVM/LIWO-overstromingslaag
 const FLOOD_CLASSES = {
@@ -202,7 +204,7 @@ async function performLookup(geocodeFn) {
     const place = await geocodeFn();
     showStatus(`Data ophalen voor ${place.name}…`);
 
-    const [lki, annual, ldenTotal, ldenRoad, ldenRail, ldenAir, flood, industry, nuclear, safety] =
+    const [lki, annual, ldenTotal, ldenRoad, ldenRail, ldenAir, flood, industry, nuclear, powerline, safety] =
       await Promise.all([
         fetchAirLatest('LKI', place.lon, place.lat),
         fetchAnnualAir(place.lon, place.lat),
@@ -213,6 +215,7 @@ async function performLookup(geocodeFn) {
         fetchFlood(place.lon, place.lat),
         fetchLden(NOISE_LAYERS.industry, place.lon, place.lat),
         fetchNearestNuclear(place.rd),
+        fetchNearestPowerline(place.rd),
         fetchBuurt(place.rd).then((buurt) => Promise.all([
           fetchCrime(buurt).then((crime) => ({ buurt, crime })),
           fetchGezondheid(buurt),
@@ -226,7 +229,7 @@ async function performLookup(geocodeFn) {
       verkeer: { road: ldenRoad, rail: ldenRail, air: ldenAir },
       veiligheid: safetyData,
       gezondheid,
-      omgeving: { flood, nuclear, industry, military: nearestMilitary(place.lon, place.lat) },
+      omgeving: { flood, nuclear, industry, military: nearestMilitary(place.lon, place.lat), powerline },
     });
     hideStatus();
   } catch (err) {
@@ -555,6 +558,61 @@ async function fetchNearestNuclear(rd) {
   return nearest;
 }
 
+// Dichtstbijzijnde bovengrondse hoogspanningslijn en of het adres binnen de
+// indicatieve magneetveldzone (RIVM-rekenafstand) valt. Straling waar mensen
+// zich bij een woning zorgen over maken. Bbox van 600 m houdt de query klein.
+async function fetchNearestPowerline(rd) {
+  const d = 600;
+  const params = new URLSearchParams({
+    service: 'WFS', version: '2.0.0', request: 'GetFeature',
+    typeNames: POWERLINE_LAYER,
+    outputFormat: 'application/json',
+    srsName: 'EPSG:28992',
+    bbox: `${rd.x - d},${rd.y - d},${rd.x + d},${rd.y + d},urn:ogc:def:crs:EPSG::28992`,
+  });
+  try {
+    const json = await fetchJson(`${POWERLINE_WFS}?${params}`);
+    const feats = json.features ?? [];
+    if (!feats.length) return { found: false };
+    let best = null;
+    for (const f of feats) {
+      const g = f.geometry;
+      if (!g) continue;
+      const lines = g.type === 'MultiLineString' ? g.coordinates : [g.coordinates];
+      for (const line of lines) {
+        for (let i = 0; i < line.length - 1; i++) {
+          const dist = pointToSegment(rd.x, rd.y, line[i][0], line[i][1], line[i + 1][0], line[i + 1][1]);
+          if (!best || dist < best.dist) best = { dist, props: f.properties };
+        }
+      }
+    }
+    if (!best) return { found: false };
+    // rekenafstand staat als "2 x 115 meter"; pak het aantal meters
+    const zoneMatch = String(best.props.rekenafs_1 ?? '').match(/(\d+)\s*meter/);
+    const zone = zoneMatch ? Number(zoneMatch[1]) : 0;
+    return {
+      found: true,
+      meters: best.dist,
+      voltage: best.props.spanning__ ?? null,
+      name: best.props.naam_fe ?? null,
+      zone,
+      inZone: best.dist <= zone,
+    };
+  } catch (err) {
+    console.warn('Hoogspanningslijnen mislukt:', err);
+    return null;
+  }
+}
+
+// Kortste afstand van een punt tot een lijnstuk (RD-meters)
+function pointToSegment(px, py, x1, y1, x2, y2) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  if (dx === 0 && dy === 0) return Math.hypot(px - x1, py - y1);
+  const t = clamp(((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy), 0, 1);
+  return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+}
+
 async function fetchJson(url) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`${res.status} bij ${url}`);
@@ -628,12 +686,23 @@ function scoreFromMilitary(military) {
   return clamp(10 - (25 - military.km) * 0.2, 5, 10);
 }
 
-function omgevingScore({ flood, nuclear, industry, military }) {
+// Straling van hoogspanningslijnen: binnen de magneetveldzone is er een
+// RIVM-voorzorgadvies, daarbuiten neemt het veld snel af.
+function scoreFromPowerline(pl) {
+  if (!pl) return null;                       // fout bij ophalen
+  if (!pl.found) return 10;                    // gezocht, geen lijn binnen 600 m
+  if (pl.inZone) return 3.5;                   // binnen de indicatieve magneetveldzone
+  if (pl.meters <= Math.max(pl.zone * 2, 100)) return 6.5; // vlakbij
+  return 8.5;                                  // lijn in de buurt, ruim buiten de zone
+}
+
+function omgevingScore({ flood, nuclear, industry, military, powerline }) {
   const parts = [
     flood?.score ?? null,
     scoreFromNuclear(nuclear),
     industry ? scoreFromLden(industry) : null,
     scoreFromMilitary(military),
+    scoreFromPowerline(powerline),
   ].filter((v) => v != null);
   return parts.length ? parts.reduce((a, b) => a + b) / parts.length : null;
 }
@@ -931,7 +1000,7 @@ async function renderRanking(buurt, crime, causes) {
 async function computeBuurtLeefscore(candidate, causes) {
   try {
     const place = await geocodeBuurt(candidate.code);
-    const [annual, ldenTotal, ldenRoad, ldenRail, ldenAir, flood, industry, nuclear] = await Promise.all([
+    const [annual, ldenTotal, ldenRoad, ldenRail, ldenAir, flood, industry, nuclear, powerline] = await Promise.all([
       fetchAnnualAir(place.lon, place.lat),
       fetchLden(NOISE_LAYERS.total, place.lon, place.lat),
       fetchLden(NOISE_LAYERS.road, place.lon, place.lat),
@@ -940,6 +1009,7 @@ async function computeBuurtLeefscore(candidate, causes) {
       fetchFlood(place.lon, place.lat),
       fetchLden(NOISE_LAYERS.industry, place.lon, place.lat),
       fetchNearestNuclear(place.rd),
+      fetchNearestPowerline(place.rd),
     ]);
     const subscores = {
       lucht: scoreFromAnnualAir(annual),
@@ -947,7 +1017,7 @@ async function computeBuurtLeefscore(candidate, causes) {
       verkeer: scoreFromLden(loudestTrafficSource({ road: ldenRoad, rail: ldenRail, air: ldenAir })),
       veiligheid: scoreFromCrime({ per1000: candidate.per1000 }),
       gezondheid: scoreFromHealth({ goodHealth: candidate.healthPct }, causes),
-      omgeving: omgevingScore({ flood, nuclear, industry, military: nearestMilitary(place.lon, place.lat) }),
+      omgeving: omgevingScore({ flood, nuclear, industry, military: nearestMilitary(place.lon, place.lat), powerline }),
     };
     return totalScore(subscores);
   } catch (err) {
@@ -1328,7 +1398,7 @@ function gezondheidDetails(gezondheid) {
   return rows;
 }
 
-function omgevingMain({ flood, nuclear, industry, military }) {
+function omgevingMain({ flood, nuclear, industry, military, powerline }) {
   const risks = [];
   if (flood && flood.score < 8) risks.push({ score: flood.score, text: `overstromingskans ${flood.label}` });
   const nuclearScore = scoreFromNuclear(nuclear);
@@ -1343,14 +1413,23 @@ function omgevingMain({ flood, nuclear, industry, military }) {
   if (militaryScore != null && militaryScore < 8) {
     risks.push({ score: militaryScore, text: `${military.name} op ${fmtNum(military.km, 0)} km (mogelijk doelwit)` });
   }
+  const powerScore = scoreFromPowerline(powerline);
+  if (powerScore != null && powerScore < 8) {
+    risks.push({
+      score: powerScore,
+      text: powerline.inZone
+        ? `binnen de magneetveldzone van een ${powerline.voltage} hoogspanningslijn`
+        : `hoogspanningslijn (${powerline.voltage}) op ${fmtNum(powerline.meters, 0)} m`,
+    });
+  }
   if (!risks.length) {
-    return (flood || nuclear || industry || military) ? 'Geen opvallende risico’s in de omgeving' : 'Geen data voor deze locatie';
+    return (flood || nuclear || industry || military || powerline) ? 'Geen opvallende risico’s in de omgeving' : 'Geen data voor deze locatie';
   }
   risks.sort((a, b) => a.score - b.score);
   return `Let op: ${risks[0].text}`;
 }
 
-function omgevingDetails({ flood, nuclear, industry, military }) {
+function omgevingDetails({ flood, nuclear, industry, military, powerline }) {
   const rows = [];
   if (flood) {
     rows.push(['Overstromingskans', flood.label, {
@@ -1362,6 +1441,11 @@ function omgevingDetails({ flood, nuclear, industry, military }) {
   if (military) {
     const label = military.note ? `${military.name} (${military.note})` : military.name;
     rows.push(['Militair complex', `${label}, ${fmtNum(military.km, 0)} km`]);
+  }
+  if (powerline) {
+    rows.push(['Hoogspanningslijn', powerline.found
+      ? `${powerline.voltage} op ${fmtNum(powerline.meters, 0)} m${powerline.inZone ? ' (in magneetveldzone)' : ''}`
+      : 'geen binnen 600 m']);
   }
   rows.push(['Industriegeluid', industry ? (industry.belowFloor ? 'niet hoorbaar' : fmtDb(industry)) : 'geen data']);
   return rows;
@@ -1447,7 +1531,7 @@ function gezondheidExplain(gezondheid) {
   return parts.join(' ') || 'Voor deze plek zijn geen gezondheidsgegevens beschikbaar.';
 }
 
-function omgevingExplain({ flood, nuclear, industry, military }) {
+function omgevingExplain({ flood, nuclear, industry, military, powerline }) {
   const parts = [];
   if (flood) {
     parts.push(flood.class === 1
@@ -1458,6 +1542,11 @@ function omgevingExplain({ flood, nuclear, industry, military }) {
   if (military) {
     parts.push(`Het dichtstbijzijnde militaire complex is ${military.name} op ${fmtNum(military.km, 0)} km`
       + (military.km < 15 ? ', in een conflict een mogelijk doelwit.' : '.'));
+  }
+  if (powerline?.found) {
+    parts.push(powerline.inZone
+      ? `Je zit binnen de magneetveldzone van een ${powerline.voltage} hoogspanningslijn (${fmtNum(powerline.meters, 0)} m); RIVM adviseert daar langdurige blootstelling van kinderen te beperken.`
+      : `Er loopt een ${powerline.voltage} hoogspanningslijn op ${fmtNum(powerline.meters, 0)} m, ruim buiten de magneetveldzone.`);
   }
   if (industry && !industry.belowFloor) parts.push(`Zware industrie is hier hoorbaar (${Math.round(industry.db)} dB).`);
   return parts.join(' ') || 'Voor deze plek zijn geen omgevingsgegevens beschikbaar.';
