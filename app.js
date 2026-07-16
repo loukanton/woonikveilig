@@ -34,6 +34,9 @@ const FLOOD_LAYER = '20231201_kans_overstroming';
 const NUCLEAR_LAYER = 'rivm_01092021_nucleaire_installaties';
 const POWERLINE_WFS = 'https://data.rivm.nl/geo/nl/wfs'; // RIVM-netkaart hoogspanningslijnen
 const POWERLINE_LAYER = 'nl:netkaart_actuele_versie_atlas_rivm';
+// Plaatsgebonden risico 10^-6 contouren rond gevaarlijke stoffen (Risicokaart);
+// inrichtingen (bedrijven, LPG, Brzo) en transportroutes
+const RISK_LAYERS = ['alo:rev_10_6_inrichting_30052022', 'alo:rev_10_6_transport_30052022'];
 
 // Klassen uit de legenda van de RIVM/LIWO-overstromingslaag
 const FLOOD_CLASSES = {
@@ -204,7 +207,7 @@ async function performLookup(geocodeFn) {
     const place = await geocodeFn();
     showStatus(`Data ophalen voor ${place.name}…`);
 
-    const [lki, annual, ldenTotal, ldenRoad, ldenRail, ldenAir, flood, industry, nuclear, powerline, safety] =
+    const [lki, annual, ldenTotal, ldenRoad, ldenRail, ldenAir, flood, industry, nuclear, powerline, external, safety] =
       await Promise.all([
         fetchAirLatest('LKI', place.lon, place.lat),
         fetchAnnualAir(place.lon, place.lat),
@@ -216,6 +219,7 @@ async function performLookup(geocodeFn) {
         fetchLden(NOISE_LAYERS.industry, place.lon, place.lat),
         fetchNearestNuclear(place.rd),
         fetchNearestPowerline(place.rd),
+        fetchExternalSafety(place.rd),
         fetchBuurt(place.rd).then((buurt) => Promise.all([
           fetchCrime(buurt).then((crime) => ({ buurt, crime })),
           fetchGezondheid(buurt),
@@ -229,7 +233,7 @@ async function performLookup(geocodeFn) {
       verkeer: { road: ldenRoad, rail: ldenRail, air: ldenAir },
       veiligheid: safetyData,
       gezondheid,
-      omgeving: { flood, nuclear, industry, military: nearestMilitary(place.lon, place.lat), powerline },
+      omgeving: { flood, nuclear, industry, military: nearestMilitary(place.lon, place.lat), powerline, external },
     });
     hideStatus();
   } catch (err) {
@@ -613,6 +617,77 @@ function pointToSegment(px, py, x1, y1, x2, y2) {
   return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
 }
 
+// Ligt (px,py) binnen een ring? (ray casting)
+function pointInRing(px, py, ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0]; const yi = ring[i][1];
+    const xj = ring[j][0]; const yj = ring[j][1];
+    if (((yi > py) !== (yj > py)) && (px < ((xj - xi) * (py - yi)) / (yj - yi) + xi)) inside = !inside;
+  }
+  return inside;
+}
+
+// Binnen een polygoon (buitenring minus gaten)?
+function pointInPolygon(px, py, poly) {
+  if (!pointInRing(px, py, poly[0])) return false;
+  return !poly.slice(1).some((hole) => pointInRing(px, py, hole));
+}
+
+// Kortste afstand van een punt tot de rand van een polygoon (RD-meters)
+function distanceToPolygon(px, py, poly) {
+  let min = Infinity;
+  for (const ring of poly) {
+    for (let i = 0; i < ring.length - 1; i++) {
+      const d = pointToSegment(px, py, ring[i][0], ring[i][1], ring[i + 1][0], ring[i + 1][1]);
+      if (d < min) min = d;
+    }
+  }
+  return min;
+}
+
+// Externe veiligheid: valt het adres binnen een plaatsgebonden risicocontour
+// (10^-6) van gevaarlijke stoffen, of hoe ver is de dichtstbijzijnde? Bbox van
+// 1200 m; per laag een aparte query (de server weigert meerdere tegelijk).
+async function fetchExternalSafety(rd) {
+  const d = 1200;
+  const bbox = `${rd.x - d},${rd.y - d},${rd.x + d},${rd.y + d},urn:ogc:def:crs:EPSG::28992`;
+  try {
+    const results = await Promise.all(RISK_LAYERS.map((layer) => {
+      const params = new URLSearchParams({
+        service: 'WFS', version: '2.0.0', request: 'GetFeature',
+        typeNames: layer, count: '200',
+        outputFormat: 'application/json', srsName: 'EPSG:28992', bbox,
+      });
+      return fetchJson(`${WFS_URL}?${params}`).catch(() => null);
+    }));
+    const feats = results.filter(Boolean).flatMap((j) => j.features ?? []);
+    if (!feats.length) return { found: false };
+    let inside = null;
+    let nearest = Infinity;
+    for (const f of feats) {
+      const g = f.geometry;
+      if (!g) continue;
+      const polys = g.type === 'MultiPolygon' ? g.coordinates : [g.coordinates];
+      const label = f.properties?.naam_inric ?? f.properties?.naam ?? 'gevaarlijke stoffen';
+      for (const poly of polys) {
+        if (pointInPolygon(rd.x, rd.y, poly)) { inside = label; }
+        const dist = distanceToPolygon(rd.x, rd.y, poly);
+        if (dist < nearest) nearest = dist;
+      }
+      if (inside) break;
+    }
+    // Een uitgestrekt multipolygoon kan met zijn omhullende in de bbox vallen
+    // terwijl de echte contour ver weg ligt; alleen echt binnen ~d tellen.
+    if (inside) return { found: true, inside, name: inside, meters: nearest };
+    if (nearest <= d) return { found: true, inside: null, name: null, meters: nearest };
+    return { found: false };
+  } catch (err) {
+    console.warn('Externe veiligheid mislukt:', err);
+    return null;
+  }
+}
+
 async function fetchJson(url) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`${res.status} bij ${url}`);
@@ -696,13 +771,24 @@ function scoreFromPowerline(pl) {
   return 8.5;                                  // lijn in de buurt, ruim buiten de zone
 }
 
-function omgevingScore({ flood, nuclear, industry, military, powerline }) {
+// Externe veiligheid: binnen de risicocontour is de overlijdenskans bij een
+// ongeval hoger dan de norm; vlakbij een contour telt licht mee.
+function scoreFromExternalSafety(ext) {
+  if (!ext) return null;               // fout bij ophalen
+  if (!ext.found) return 10;            // gezocht, geen contour binnen 1,2 km
+  if (ext.inside) return 2;             // binnen de plaatsgebonden risicocontour
+  if (ext.meters <= 250) return 6.5;    // vlakbij een risicocontour
+  return 9;                             // contour in de buurt, ruim erbuiten
+}
+
+function omgevingScore({ flood, nuclear, industry, military, powerline, external }) {
   const parts = [
     flood?.score ?? null,
     scoreFromNuclear(nuclear),
     industry ? scoreFromLden(industry) : null,
     scoreFromMilitary(military),
     scoreFromPowerline(powerline),
+    scoreFromExternalSafety(external),
   ].filter((v) => v != null);
   return parts.length ? parts.reduce((a, b) => a + b) / parts.length : null;
 }
@@ -1000,7 +1086,7 @@ async function renderRanking(buurt, crime, causes) {
 async function computeBuurtLeefscore(candidate, causes) {
   try {
     const place = await geocodeBuurt(candidate.code);
-    const [annual, ldenTotal, ldenRoad, ldenRail, ldenAir, flood, industry, nuclear, powerline] = await Promise.all([
+    const [annual, ldenTotal, ldenRoad, ldenRail, ldenAir, flood, industry, nuclear, powerline, external] = await Promise.all([
       fetchAnnualAir(place.lon, place.lat),
       fetchLden(NOISE_LAYERS.total, place.lon, place.lat),
       fetchLden(NOISE_LAYERS.road, place.lon, place.lat),
@@ -1010,6 +1096,7 @@ async function computeBuurtLeefscore(candidate, causes) {
       fetchLden(NOISE_LAYERS.industry, place.lon, place.lat),
       fetchNearestNuclear(place.rd),
       fetchNearestPowerline(place.rd),
+      fetchExternalSafety(place.rd),
     ]);
     const subscores = {
       lucht: scoreFromAnnualAir(annual),
@@ -1017,7 +1104,7 @@ async function computeBuurtLeefscore(candidate, causes) {
       verkeer: scoreFromLden(loudestTrafficSource({ road: ldenRoad, rail: ldenRail, air: ldenAir })),
       veiligheid: scoreFromCrime({ per1000: candidate.per1000 }),
       gezondheid: scoreFromHealth({ goodHealth: candidate.healthPct }, causes),
-      omgeving: omgevingScore({ flood, nuclear, industry, military: nearestMilitary(place.lon, place.lat), powerline }),
+      omgeving: omgevingScore({ flood, nuclear, industry, military: nearestMilitary(place.lon, place.lat), powerline, external }),
     };
     return totalScore(subscores);
   } catch (err) {
@@ -1398,8 +1485,17 @@ function gezondheidDetails(gezondheid) {
   return rows;
 }
 
-function omgevingMain({ flood, nuclear, industry, military, powerline }) {
+function omgevingMain({ flood, nuclear, industry, military, powerline, external }) {
   const risks = [];
+  const extScore = scoreFromExternalSafety(external);
+  if (extScore != null && extScore < 8) {
+    risks.push({
+      score: extScore,
+      text: external.inside
+        ? `binnen de risicocontour van ${external.name} (gevaarlijke stoffen)`
+        : `risicocontour gevaarlijke stoffen op ${fmtNum(external.meters, 0)} m`,
+    });
+  }
   if (flood && flood.score < 8) risks.push({ score: flood.score, text: `overstromingskans ${flood.label}` });
   const nuclearScore = scoreFromNuclear(nuclear);
   if (nuclearScore != null && nuclearScore < 8) {
@@ -1423,13 +1519,13 @@ function omgevingMain({ flood, nuclear, industry, military, powerline }) {
     });
   }
   if (!risks.length) {
-    return (flood || nuclear || industry || military || powerline) ? 'Geen opvallende risico’s in de omgeving' : 'Geen data voor deze locatie';
+    return (flood || nuclear || industry || military || powerline || external) ? 'Geen opvallende risico’s in de omgeving' : 'Geen data voor deze locatie';
   }
   risks.sort((a, b) => a.score - b.score);
   return `Let op: ${risks[0].text}`;
 }
 
-function omgevingDetails({ flood, nuclear, industry, military, powerline }) {
+function omgevingDetails({ flood, nuclear, industry, military, powerline, external }) {
   const rows = [];
   if (flood) {
     rows.push(['Overstromingskans', flood.label, {
@@ -1446,6 +1542,11 @@ function omgevingDetails({ flood, nuclear, industry, military, powerline }) {
     rows.push(['Hoogspanningslijn', powerline.found
       ? `${powerline.voltage} op ${fmtNum(powerline.meters, 0)} m${powerline.inZone ? ' (in magneetveldzone)' : ''}`
       : 'geen binnen 600 m']);
+  }
+  if (external) {
+    rows.push(['Gevaarlijke stoffen', external.found
+      ? (external.inside ? `binnen contour ${external.name}` : `contour op ${fmtNum(external.meters, 0)} m`)
+      : 'geen contour binnen 1,2 km']);
   }
   rows.push(['Industriegeluid', industry ? (industry.belowFloor ? 'niet hoorbaar' : fmtDb(industry)) : 'geen data']);
   return rows;
@@ -1531,8 +1632,13 @@ function gezondheidExplain(gezondheid) {
   return parts.join(' ') || 'Voor deze plek zijn geen gezondheidsgegevens beschikbaar.';
 }
 
-function omgevingExplain({ flood, nuclear, industry, military, powerline }) {
+function omgevingExplain({ flood, nuclear, industry, military, powerline, external }) {
   const parts = [];
+  if (external?.found) {
+    parts.push(external.inside
+      ? `Je woont binnen de risicocontour van ${external.name}: daar is de kans om te overlijden bij een ongeval met gevaarlijke stoffen hoger dan de wettelijke norm.`
+      : `De dichtstbijzijnde risicocontour voor gevaarlijke stoffen ligt op ${fmtNum(external.meters, 0)} m, dus je woont er ruim buiten.`);
+  }
   if (flood) {
     parts.push(flood.class === 1
       ? 'Overstromen doet dit gebied volgens de kaarten niet.'

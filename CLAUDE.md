@@ -33,6 +33,7 @@ Doelgroep: huizenkopers die een postcode intypen en in één oogopslag willen zi
 | RIVM overstroming | overstromingskans in klassen 1 t/m 5 (laag `20231201_kans_overstroming`) | zelfde WMS als geluid |
 | RIVM nucleair | nucleaire installaties (ook buitenland) als WFS-punten in RD | `data.rivm.nl/geo/alo/wfs` |
 | RIVM hoogspanning | bovengrondse hoogspanningslijnen + magneetveldzone (rekenafstand), als WFS-lijnen in RD (laag `nl:netkaart_actuele_versie_atlas_rivm`; ander geo-pad dan alo) | `data.rivm.nl/geo/nl/wfs` |
+| RIVM externe veiligheid | plaatsgebonden risicocontour 10⁻⁶ rond gevaarlijke stoffen (Risicokaart), WFS-polygonen in RD; punt-in-polygoon test. Lagen `alo:rev_10_6_inrichting_30052022` en `alo:rev_10_6_transport_30052022`; server weigert meerdere typeNames tegelijk, dus per laag apart | `data.rivm.nl/geo/alo/wfs` |
 | RIVM Gezondheidsmonitor | ervaren gezondheid, langdurige aandoening per buurt (tabel 50150NED, Leeftijd `'20300'`, Marges `'MW00000'`) | `dataderden.cbs.nl/ODataApi/odata/50150NED` |
 | CBS kerncijfers | sterfte per 1.000 inwoners per gemeente (tabel 70072ned) | `opendata.cbs.nl/ODataApi/odata/70072ned` |
 | CBS doodsoorzaken | kanker/ademhaling in sterfgevallen per gemeente, NL-referentie is RegioS `'NL01  '` (tabel 80142ned; let op: 80202ned heeft maar 25 gemeenten) | `opendata.cbs.nl/ODataApi/odata/80142ned` |
