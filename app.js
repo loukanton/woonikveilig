@@ -78,11 +78,11 @@ let lastResult = null; // { name, score } van het laatst getoonde rapport, voor 
 // TradeTracker). Zonder url blijft het blok verborgen. De reclame-melding
 // eronder is wettelijk verplicht en blijft altijd staan.
 const AFFILIATE = {
-  enabled: false,
-  url: '',
-  title: 'Serieus over dit huis?',
-  text: 'Laat een bouwkundige keuring doen voordat je een bod uitbrengt. Dat kost een paar honderd euro en voorkomt dure verrassingen achter de voordeur.',
-  button: 'Vraag een bouwkundige keuring aan',
+  enabled: true,
+  url: 'https://rkn3.net/c/?si=14571&li=1723607&wi=423205&ws=rapport',
+  title: 'Ongedierte in of rond het huis?',
+  text: 'Ratten, muizen of ander ongedierte in de buurt? Een professionele bestrijder pakt het snel en gericht aan.',
+  button: 'Ongediertebestrijding aanvragen',
 };
 
 // Privacyregel eerlijk houden: zonder affiliate plaatst de site niets. Zodra
