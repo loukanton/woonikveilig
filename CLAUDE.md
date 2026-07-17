@@ -25,7 +25,7 @@ Doelgroep: huizenkopers die een postcode intypen en in één oogopslag willen zi
 |---|---|---|
 | PDOK Locatieserver | postcode → coördinaten/buurt | `api.pdok.nl/bzk/locatieserver/search/v3_1/free` |
 | Luchtmeetnet | live luchtkwaliteit (LKI, NO₂, PM2.5) | `api.luchtmeetnet.nl/open_api/` |
-| RIVM geodata | geluidskaarten (Lden wegverkeer e.a.) | `data.rivm.nl/geo/` (WMS) |
+| RIVM geodata | geluidskaarten (Lden per bron; totaal zelf energetisch optellen, want de allebronnen-kaart telt industrie uit 2008 mee en spreekt dan de actuele bronkaarten tegen) | `data.rivm.nl/geo/` (WMS) |
 | RIVM NSL | jaargemiddelde NO₂ en PM2,5 (lagen `rivm_nsl_20260401_gm_NO22024`/`_PM252024`) | zelfde WMS als geluid |
 | PDOK BRT | achtergrondkaart-tegels (grijs) voor het kaartje | `service.pdok.nl/brt/achtergrondkaart/wmts/` |
 | CBS wijken/buurten | buurtcode, buurtnaam, inwoners op een punt (RD, via bbox; `cql_filter` werkt daar niet) | `service.pdok.nl/cbs/wijkenbuurten/2024/wfs/v1_0` |

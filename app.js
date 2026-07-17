@@ -22,12 +22,18 @@ const TILE_URL = 'https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0/grijs/E
 const MAP_ZOOM = 15;
 const TILE_SIZE = 256;
 
+// Let op: de RIVM-totaalkaart "allebronnen_2020" telt een industriekaart uit
+// 2008 mee en kan daardoor fors afwijken van de actuele bronkaarten (gezien in
+// Hilversum: 67 dB totaal door verdwenen industrie, terwijl actueel 0 zegt).
+// Daarom rekenen we het totaal zelf energetisch op uit de bronkaarten; de
+// totaalkaart gebruiken we alleen nog als visuele kaartlaag.
 const NOISE_LAYERS = {
-  total: 'rivm_20220601_Geluid_lden_allebronnen_2020',
+  total: 'rivm_20220601_Geluid_lden_allebronnen_2020', // alleen voor de kaartweergave
   road: 'rivm_20220601_Geluid_lden_wegverkeer_2020',
   rail: 'rivm_20220601_Geluid_lden_treinverkeer_2020',
   air: 'rivm_20220601_Geluid_lden_vliegverkeer_2020',
   industry: 'rivm_Geluid_lden_industrie_actueel',
+  wind: 'rivm_20220601_Geluid_lden_windturbines_2021',
 };
 
 const FLOOD_LAYER = '20231201_kans_overstroming';
@@ -207,11 +213,11 @@ async function performLookup(geocodeFn) {
     const place = await geocodeFn();
     showStatus(`Data ophalen voor ${place.name}…`);
 
-    const [lki, annual, ldenTotal, ldenRoad, ldenRail, ldenAir, flood, industry, nuclear, powerline, external, safety] =
+    const [lki, annual, ldenWind, ldenRoad, ldenRail, ldenAir, flood, industry, nuclear, powerline, external, safety] =
       await Promise.all([
         fetchAirLatest('LKI', place.lon, place.lat),
         fetchAnnualAir(place.lon, place.lat),
-        fetchLden(NOISE_LAYERS.total, place.lon, place.lat),
+        fetchLden(NOISE_LAYERS.wind, place.lon, place.lat),
         fetchLden(NOISE_LAYERS.road, place.lon, place.lat),
         fetchLden(NOISE_LAYERS.rail, place.lon, place.lat),
         fetchLden(NOISE_LAYERS.air, place.lon, place.lat),
@@ -226,10 +232,12 @@ async function performLookup(geocodeFn) {
         ])),
       ]);
     const [safetyData, gezondheid] = safety;
+    // Zelf opgeteld uit de actuele bronkaarten; zie de noot bij NOISE_LAYERS
+    const ldenTotal = combineLden([ldenRoad, ldenRail, ldenAir, industry, ldenWind]);
 
     render(place, {
       lucht: { lki, annual },
-      geluid: { lden: ldenTotal },
+      geluid: { lden: ldenTotal, industry, wind: ldenWind },
       verkeer: { road: ldenRoad, rail: ldenRail, air: ldenAir },
       veiligheid: safetyData,
       gezondheid,
@@ -358,6 +366,19 @@ async function fetchLden(layer, lon, lat) {
   const value = await fetchGridValue(layer, lon, lat);
   if (value == null || value < 0 || value > 120) return null;
   return { db: value, belowFloor: value === 0 };
+}
+
+// Energetische optelling van geluidsbronnen (decibellen tellen logaritmisch
+// op). Bronnen onder de kaartondergrens (< 45 dB) dragen nauwelijks bij en
+// blijven buiten de som.
+function combineLden(sources) {
+  const present = sources.filter(Boolean);
+  if (!present.length) return null;
+  const audible = present.filter((s) => !s.belowFloor && s.db > 0);
+  if (!audible.length) return { db: 0, belowFloor: true };
+  const sum = audible.reduce((acc, s) => acc + 10 ** (s.db / 10), 0);
+  const db = 10 * Math.log10(sum);
+  return { db, belowFloor: db < 45 };
 }
 
 async function fetchFlood(lon, lat) {
@@ -1086,9 +1107,9 @@ async function renderRanking(buurt, crime, causes) {
 async function computeBuurtLeefscore(candidate, causes) {
   try {
     const place = await geocodeBuurt(candidate.code);
-    const [annual, ldenTotal, ldenRoad, ldenRail, ldenAir, flood, industry, nuclear, powerline, external] = await Promise.all([
+    const [annual, ldenWind, ldenRoad, ldenRail, ldenAir, flood, industry, nuclear, powerline, external] = await Promise.all([
       fetchAnnualAir(place.lon, place.lat),
-      fetchLden(NOISE_LAYERS.total, place.lon, place.lat),
+      fetchLden(NOISE_LAYERS.wind, place.lon, place.lat),
       fetchLden(NOISE_LAYERS.road, place.lon, place.lat),
       fetchLden(NOISE_LAYERS.rail, place.lon, place.lat),
       fetchLden(NOISE_LAYERS.air, place.lon, place.lat),
@@ -1098,6 +1119,7 @@ async function computeBuurtLeefscore(candidate, causes) {
       fetchNearestPowerline(place.rd),
       fetchExternalSafety(place.rd),
     ]);
+    const ldenTotal = combineLden([ldenRoad, ldenRail, ldenAir, industry, ldenWind]);
     const subscores = {
       lucht: scoreFromAnnualAir(annual),
       geluid: scoreFromLden(ldenTotal),
@@ -1401,12 +1423,16 @@ function geluidMain({ lden }) {
   return lden ? `Alle geluidsbronnen samen: ${ldenLabel(lden)}` : 'Geen data voor deze locatie';
 }
 
-function geluidDetails({ lden }) {
+function geluidDetails({ lden, industry, wind }) {
   if (!lden) return [];
-  return [
-    ['Jaargemiddelde (Lden)', fmtDb(lden), ldenMeter(lden)],
+  const rows = [
+    ['Alle bronnen samen (Lden)', fmtDb(lden), ldenMeter(lden)],
     ['WHO-advies wegverkeer', '53 dB'],
   ];
+  // Verkeersbronnen staan uitgesplitst onder 03 Verkeer; hier de rest
+  if (industry) rows.push(['Industrie', industry.belowFloor ? 'niet hoorbaar' : fmtDb(industry)]);
+  if (wind) rows.push(['Windturbines', wind.belowFloor ? 'niet hoorbaar' : fmtDb(wind)]);
+  return rows;
 }
 
 function verkeerMain(traffic) {
