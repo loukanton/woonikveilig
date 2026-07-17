@@ -1362,10 +1362,12 @@ function loudestTrafficSource({ road, rail, air }) {
 }
 
 function luchtMain({ lki, annual }) {
-  const score = scoreFromAnnualAir(annual);
-  if (score == null) {
+  const raw = scoreFromAnnualAir(annual);
+  if (raw == null) {
     return lki ? `Luchtkwaliteit nu: ${lkiLabel(lki.value)}` : 'Geen actuele meting beschikbaar';
   }
+  // Zelfde afronding als het getoonde cijfer, anders spreekt het label de badge tegen
+  const score = Math.round(raw * 10) / 10;
   const label = score >= 8 ? 'schoon' : score >= 6.5 ? 'redelijk schoon' : score >= 5 ? 'matig' : 'ongezond';
   return `De lucht is hier over het jaar ${label}`;
 }
