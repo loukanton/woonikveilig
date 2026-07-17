@@ -1391,7 +1391,7 @@ function luchtMain({ lki, annual }) {
   // Zelfde afronding als het getoonde cijfer, anders spreekt het label de badge tegen
   const score = Math.round(raw * 10) / 10;
   const label = score >= 8 ? 'schoon' : score >= 6.5 ? 'redelijk schoon' : score >= 5 ? 'matig' : 'ongezond';
-  return `De lucht is hier over het jaar ${label}`;
+  return { text: `De lucht is hier over het jaar ${label}`, label };
 }
 
 function luchtDetails({ lki, annual }) {
@@ -1420,7 +1420,9 @@ function luchtDetails({ lki, annual }) {
 }
 
 function geluidMain({ lden }) {
-  return lden ? `Alle geluidsbronnen samen: ${ldenLabel(lden)}` : 'Geen data voor deze locatie';
+  if (!lden) return 'Geen data voor deze locatie';
+  const label = ldenLabel(lden);
+  return { text: `Alle geluidsbronnen samen: ${label}`, label };
 }
 
 function geluidDetails({ lden, industry, wind }) {
@@ -1438,7 +1440,8 @@ function geluidDetails({ lden, industry, wind }) {
 function verkeerMain(traffic) {
   const loudest = loudestTrafficSource(traffic);
   if (!loudest) return 'Geen data voor deze locatie';
-  return `Luidste bron: ${ldenLabel(loudest)}`;
+  const label = ldenLabel(loudest);
+  return { text: `Luidste bron: ${label}`, label };
 }
 
 function verkeerDetails({ road, rail, air }) {
@@ -1459,7 +1462,8 @@ function crimeLabel(per1000) {
 function veiligheidMain({ buurt, crime }) {
   if (!crime) return 'Geen misdaadcijfers voor deze buurt';
   if (crime.per1000 == null) return `${crime.total} misdrijven in een jaar, inwonertal onbekend`;
-  return `Buurt ${buurt.name}: ${crimeLabel(crime.per1000)}`;
+  const label = crimeLabel(crime.per1000);
+  return { text: `Buurt ${buurt.name}: ${label}`, label };
 }
 
 function veiligheidDetails({ buurt, crime }) {
@@ -1686,6 +1690,24 @@ function omgevingExplain({ flood, nuclear, industry, military, powerline, extern
   return parts.join(' ') || 'Voor deze plek zijn geen omgevingsgegevens beschikbaar.';
 }
 
+// Zet de conclusiezin. Is het een object met een kwaliteitswoord (bijv.
+// "schoon", "stil", "lawaaiig"), dan kleurt dat woord mee met de scorekleur.
+function renderMainText(el, main, score) {
+  el.textContent = '';
+  if (!main || typeof main === 'string' || !main.label) {
+    el.textContent = typeof main === 'string' ? main : (main?.text ?? '');
+    return;
+  }
+  const idx = main.text.lastIndexOf(main.label);
+  if (idx === -1) { el.textContent = main.text; return; }
+  el.append(document.createTextNode(main.text.slice(0, idx)));
+  const span = document.createElement('span');
+  span.className = 'quality';
+  span.textContent = main.label;
+  if (score != null) span.style.color = scoreColor(score);
+  el.append(span, document.createTextNode(main.text.slice(idx + main.label.length)));
+}
+
 function renderCard(sel, score, main, explain, details) {
   const card = $(sel);
   const badge = $('[data-score]', card);
@@ -1696,7 +1718,7 @@ function renderCard(sel, score, main, explain, details) {
     badge.textContent = fmtNum(score);
     badge.style.background = scoreColor(score);
   }
-  $('[data-main]', card).textContent = main;
+  renderMainText($('[data-main]', card), main, score);
   $('[data-explain]', card).textContent = explain;
   const list = $('[data-details]', card);
   list.innerHTML = '';

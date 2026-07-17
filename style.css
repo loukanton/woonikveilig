@@ -622,6 +622,8 @@ h1 .accent {
   text-wrap: pretty;
 }
 
+.card-main .quality { font-weight: 800; }
+
 .card-explain {
   font-size: 0.88rem;
   font-weight: 500;
