@@ -1,0 +1,8 @@
+{
+  "name": "woonikveilig",
+  "private": true,
+  "description": "Statische site. De dependency hieronder wordt alleen door de Cloudflare Pages Functions in /functions gebruikt; de site zelf blijft build-vrij.",
+  "dependencies": {
+    "workers-og": "^0.0.25"
+  }
+}

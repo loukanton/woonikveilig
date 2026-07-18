@@ -17,7 +17,10 @@
   <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="Woon ik veilig? De buurtcheck voor huizenkopers, van BrightHouse.">
   <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Woon ik veilig? Het rapport van elke buurt">
+  <meta name="twitter:description" content="Check elke buurt op geluid, lucht, verkeer, misdaad, gezondheid en omgevingsrisico. Eén leefscore uit open data.">
   <meta name="twitter:image" content="https://woonikveilig.nl/og-image.png">
+  <meta name="twitter:image:alt" content="Woon ik veilig? De buurtcheck voor huizenkopers, van BrightHouse.">
   <meta name="theme-color" content="#f83898">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="apple-touch-icon" href="favicon.png">
@@ -60,8 +63,19 @@
           <span class="score-title">Leefscore</span>
           <span id="total-label" class="score-label"></span>
           <p id="score-reason" class="score-reason"></p>
+          <p id="score-context" class="score-context"></p>
           <span class="score-sub">op basis van lucht, geluid, verkeer, veiligheid, gezondheid en omgevingsrisico</span>
-          <button type="button" id="share-button" class="share-button">Deel dit rapport</button>
+          <div class="share" id="share">
+            <button type="button" id="share-button" class="share-button" aria-expanded="false" aria-controls="share-menu">Deel dit rapport</button>
+            <div class="share-menu" id="share-menu" hidden>
+              <a class="share-option" id="share-whatsapp" data-channel="whatsapp" target="_blank" rel="noopener">WhatsApp</a>
+              <a class="share-option" id="share-x" data-channel="x" target="_blank" rel="noopener">X</a>
+              <a class="share-option" id="share-linkedin" data-channel="linkedin" target="_blank" rel="noopener">LinkedIn</a>
+              <a class="share-option" id="share-email" data-channel="email">E-mail</a>
+              <button type="button" class="share-option" id="share-native" hidden>Meer apps</button>
+              <button type="button" class="share-option" id="share-copy">Kopieer link</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -194,6 +208,10 @@
     <a class="masthead footer-mark" href="https://brighthouse.consulting/" target="_blank" rel="noopener" aria-label="BrightHouse Consulting">Bright<span class="mh-house">House</span><span class="mh-dot"></span></a>
     <p>Een initiatief van <strong>BrightHouse Consulting</strong>. Vragen of een fout gezien? Mail <a href="mailto:media@brighthouse.consulting">media@brighthouse.consulting</a>.</p>
     <p><span id="privacy-note">Geen cookies. Bezoek wordt anoniem geteld via Cloudflare, zonder je te volgen of te profileren.</span> Alle data komt live uit open bronnen; aan dit rapport kunnen geen rechten worden ontleend.</p>
+    <nav class="footer-cities" aria-label="Leefbaarheid per stad">
+      <span>Leefbaarheid per stad:</span>
+      <a href="/in/amsterdam">Amsterdam</a><a href="/in/rotterdam">Rotterdam</a><a href="/in/den-haag">Den Haag</a><a href="/in/utrecht">Utrecht</a><a href="/in/eindhoven">Eindhoven</a><a href="/in/groningen">Groningen</a><a href="/in/tilburg">Tilburg</a><a href="/in/almere">Almere</a><a href="/in/breda">Breda</a><a href="/in/nijmegen">Nijmegen</a><a href="/in/apeldoorn">Apeldoorn</a><a href="/in/arnhem">Arnhem</a><a href="/in/haarlem">Haarlem</a><a href="/in/enschede">Enschede</a><a href="/in/amersfoort">Amersfoort</a><a href="/in/zaanstad">Zaanstad</a><a href="/in/den-bosch">'s-Hertogenbosch</a><a href="/in/zwolle">Zwolle</a><a href="/in/leiden">Leiden</a><a href="/in/maastricht">Maastricht</a><a href="/in/dordrecht">Dordrecht</a><a href="/in/delft">Delft</a><a href="/in/alkmaar">Alkmaar</a><a href="/in/leeuwarden">Leeuwarden</a>
+    </nav>
   </footer>
 
   <script src="app.js" defer></script>

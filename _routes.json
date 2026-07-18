@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "description": "Only these paths invoke Pages Functions; all other requests (app.js, style.css, fonts, images) are served from the free static-asset fast path without running the middleware.",
+  "include": [
+    "/",
+    "/index.html",
+    "/og",
+    "/track",
+    "/stats",
+    "/in/*",
+    "/sitemap.xml"
+  ],
+  "exclude": []
+}

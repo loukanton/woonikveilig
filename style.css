@@ -289,7 +289,7 @@ h1 .accent {
 /* Score als groot Archivo-getal, zoals de AI-scan */
 .score-hero {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   flex-wrap: wrap;
   gap: 8px 32px;
   padding: 34px 0 20px;
@@ -341,6 +341,19 @@ h1 .accent {
   text-wrap: pretty;
 }
 
+.score-context {
+  max-width: 46ch;
+  margin-top: 8px;
+  padding-left: 12px;
+  border-left: 3px solid var(--pink);
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--muted);
+  text-wrap: pretty;
+}
+.score-context:empty { display: none; }
+
 .score-sub {
   font-weight: 700;
   font-size: 0.68rem;
@@ -349,9 +362,13 @@ h1 .accent {
   color: var(--muted);
 }
 
-.share-button {
+.share {
+  position: relative;
   align-self: flex-start;
   margin-top: 8px;
+}
+
+.share-button {
   background: none;
   border: none;
   cursor: pointer;
@@ -370,6 +387,45 @@ h1 .accent {
 .share-button:focus-visible {
   outline: 2px solid var(--pink);
   outline-offset: 3px;
+}
+
+.share-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  min-width: 190px;
+  padding: 6px;
+  background: var(--paper);
+  border: var(--rule);
+  border-radius: 10px;
+}
+
+.share-menu[hidden] { display: none; }
+
+.share-option {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: var(--ink);
+  padding: 9px 10px;
+  text-decoration: none;
+}
+
+.share-option:hover { background: var(--pink-wash); color: var(--pink-deep); }
+
+.share-option:focus-visible {
+  outline: 2px solid var(--pink);
+  outline-offset: 2px;
 }
 
 /* Herkomstregel bij de data */
@@ -818,6 +874,17 @@ button.rank-name:focus-visible { outline: 2px solid var(--pink); outline-offset:
 .site-footer a { color: var(--pink-deep); font-weight: 700; }
 .site-footer strong { color: var(--ink); }
 .site-footer p { margin-bottom: 6px; }
+
+.footer-cities {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--inner-line);
+  line-height: 2;
+}
+.footer-cities span { color: var(--muted); font-weight: 700; margin-right: 4px; }
+.footer-cities a { color: var(--muted); font-weight: 600; }
+.footer-cities a:not(:last-child)::after { content: " ·"; color: var(--inner-line); font-weight: 400; }
+.footer-cities a:hover { color: var(--pink-deep); }
 
 .footer-mark {
   display: inline-block;

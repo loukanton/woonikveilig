@@ -1,0 +1,18 @@
+# Cloudflare Pages config. The site itself stays build-free; this only
+# configures the runtime of the functions in /functions.
+# Deploy with ./deploy.sh, which fills .deploy/ with an allowlist of public
+# files. Never deploy the repo root: Pages ignores .gitignore/.assetsignore
+# and would publish everything, including local config and secrets.
+# Local dev: npx wrangler pages dev .   (explicit dir overrides this setting)
+name = "woonikveilig"
+pages_build_output_dir = ".deploy"
+compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+# D1 database for the share funnel, created with
+#   npx wrangler d1 create woonikveilig
+# Local dev gets an automatic sqlite file instead.
+[[d1_databases]]
+binding = "DB"
+database_name = "woonikveilig"
+database_id = "1ef97b4c-8baf-470c-aba3-7a652215debb"

@@ -158,22 +158,138 @@ function updateShareUrl(place) {
   }
 }
 
-$('#share-button').addEventListener('click', async () => {
-  if (!lastResult) return;
-  const text = lastResult.score != null
-    ? `Leefscore ${fmtNum(lastResult.score)} voor ${lastResult.name}`
-    : `Het buurtrapport voor ${lastResult.name}`;
+// Share URL enriched with the already-computed score and name, so the
+// Cloudflare middleware can build a per-postcode preview card without
+// recomputing the leefscore server-side. Built from scratch (never from
+// location.href) so stale params from a previously opened shared link can
+// never leak into a new share, even when history.replaceState is unavailable
+// (file://).
+function shareUrl() {
+  const current = new URLSearchParams(location.search);
+  const url = new URL(location.pathname, location.origin);
+  for (const key of ['pc', 'buurt']) {
+    if (current.get(key)) url.searchParams.set(key, current.get(key));
+  }
+  if (lastResult.score != null) url.searchParams.set('s', fmtNum(lastResult.score));
+  if (lastResult.name) url.searchParams.set('n', lastResult.name);
+  return url.toString();
+}
+
+// Six-pillar phrase; also appears in the share texts of functions/_middleware.js
+// and the OG card in functions/og.js. Keep the wording in sync.
+const SHARE_PILLARS = 'lucht, geluid, verkeer, veiligheid, gezondheid en omgeving';
+
+// Prescribed share copy based on the last rendered report.
+function shareTexts() {
+  const name = lastResult.name;
+  const url = shareUrl();
+  const hasScore = lastResult.score != null;
+
+  const subject = hasScore
+    ? `Leefscore ${fmtNum(lastResult.score)} voor ${name}`
+    : `Buurtrapport voor ${name}`;
+
+  const social = `${subject}: ${SHARE_PILLARS} in één cijfer. Check je eigen postcode op Woon ik veilig?`;
+
+  const intro = hasScore
+    ? `Ik keek net op Woon ik veilig? hoe leefbaar ${name} is.\n\nLeefscore: ${fmtNum(lastResult.score)} van de 10, opgebouwd uit ${SHARE_PILLARS}, met open data van RIVM, CBS en de politie.`
+    : `Ik keek net op Woon ik veilig? naar het buurtrapport voor ${name}.\n\nHet rapport bundelt ${SHARE_PILLARS}, met open data van RIVM, CBS en de politie.`;
+  const body = `${intro}\n\nBekijk het rapport of check je eigen postcode:\n${url}`;
+
+  return { social, subject, body, url };
+}
+
+const shareRoot = $('#share');
+const shareButton = $('#share-button');
+const shareMenu = $('#share-menu');
+
+// Share event to /track (Cloudflare D1) for the share funnel. Uses sendBeacon
+// so it also arrives while navigating away. Tracking must never break the UX,
+// so all errors are silently ignored (file://, missing functions, adblock).
+function track(channel) {
   try {
-    if (navigator.share) {
-      await navigator.share({ title: 'Woon ik veilig?', text, url: location.href });
-    } else {
-      await navigator.clipboard.writeText(`${text} ${location.href}`);
-      flashButton($('#share-button'), 'Link gekopieerd');
-    }
+    const params = new URLSearchParams(location.search);
+    const payload = JSON.stringify({
+      channel,
+      score: lastResult && lastResult.score != null ? fmtNum(lastResult.score) : null,
+      pc: params.get('pc') || params.get('buurt') || null,
+    });
+    navigator.sendBeacon('/track', new Blob([payload], { type: 'application/json' }));
   } catch (err) {
-    if (err.name === 'AbortError') return; // delen geannuleerd
-    // Zonder clipboard-toegang (bijv. file://) tonen we de tekst als prompt
-    window.prompt('Kopieer deze link:', `${text} ${location.href}`);
+    // ignore silently
+  }
+}
+
+function openShareMenu() {
+  const { social, subject, body, url } = shareTexts();
+  // LinkedIn ignores custom text and reads only the OG tags of the URL.
+  $('#share-whatsapp').href = `https://wa.me/?text=${encodeURIComponent(`${social} ${url}`)}`;
+  $('#share-x').href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(social)}&url=${encodeURIComponent(url)}`;
+  $('#share-linkedin').href = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`;
+  $('#share-email').href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  shareMenu.hidden = false;
+  shareButton.setAttribute('aria-expanded', 'true');
+}
+
+function closeShareMenu(returnFocus = false) {
+  if (shareMenu.hidden) return;
+  shareMenu.hidden = true;
+  shareButton.setAttribute('aria-expanded', 'false');
+  // Escape while focus is inside the menu would otherwise drop focus on <body>.
+  if (returnFocus && shareRoot.contains(document.activeElement)) shareButton.focus();
+}
+
+// The button always opens our own menu, so the experience is identical on
+// every device: one click, WhatsApp/X/LinkedIn/e-mail right there. The native
+// OS share sheet is an extra option inside the menu where the browser supports
+// it (mobile keeps access to all the user's apps), never a surprise first step.
+shareButton.addEventListener('click', () => {
+  if (!lastResult) return;
+  if (shareMenu.hidden) openShareMenu(); else closeShareMenu();
+});
+
+const shareNative = $('#share-native');
+if (navigator.share) {
+  shareNative.hidden = false;
+  shareNative.addEventListener('click', async () => {
+    const { social, url } = shareTexts();
+    closeShareMenu();
+    try {
+      await navigator.share({ title: 'Woon ik veilig?', text: social, url });
+      track('native');
+    } catch (err) {
+      if (err.name === 'AbortError') return; // user cancelled
+      window.prompt('Kopieer deze link:', `${social} ${url}`);
+    }
+  });
+}
+
+// A chosen channel is counted and closes the menu; click outside or Escape too.
+shareMenu.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => {
+  track(a.dataset.channel);
+  closeShareMenu();
+}));
+document.addEventListener('click', (e) => {
+  if (!shareRoot.contains(e.target)) closeShareMenu();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeShareMenu(true);
+});
+
+// Copy the share text with link to the clipboard, falling back to a prompt.
+// Feedback flashes on the always-visible share button, because the menu (and
+// the clicked option with it) closes immediately. Only a real copy is tracked.
+$('#share-copy').addEventListener('click', async () => {
+  if (!lastResult) return;
+  const { social, url } = shareTexts();
+  const payload = `${social} ${url}`;
+  closeShareMenu(true);
+  try {
+    await navigator.clipboard.writeText(payload);
+    flashButton(shareButton, 'Gekopieerd');
+    track('copy');
+  } catch (err) {
+    window.prompt('Kopieer deze link:', payload);
   }
 });
 
@@ -895,6 +1011,55 @@ const fmtDb = (lden) => (lden.belowFloor ? '< 45 dB' : `${Math.round(lden.db)} d
 const fmtTime = (date) =>
   date.toLocaleString('nl-NL', { hour: '2-digit', minute: '2-digit' });
 
+// National context under the headline: how does this neighbourhood compare
+// to the national picture on the components with a real reference (safety
+// ~45 crimes per 1,000, health 74% feels healthy, air vs WHO guideline)?
+// Puts the score in perspective at a glance, also on a screenshot. Only
+// components with data count; we take the two strongest deviations.
+function nationalContext(data) {
+  const items = [];
+
+  const crime = data.veiligheid?.crime;
+  if (crime?.per1000 != null) {
+    const ratio = crime.per1000 / 45;
+    items.push({
+      weight: Math.abs(ratio - 1),
+      text: ratio < 0.7 ? 'de buurt is veiliger dan gemiddeld in Nederland'
+        : ratio < 0.9 ? 'de buurt is iets veiliger dan gemiddeld'
+        : ratio <= 1.15 ? 'de veiligheid ligt rond het landelijk gemiddelde'
+        : ratio <= 1.6 ? 'er zijn meer misdrijven dan gemiddeld in Nederland'
+        : 'er zijn veel meer misdrijven dan gemiddeld',
+    });
+  }
+
+  const monitor = data.gezondheid?.monitor;
+  if (monitor?.goodHealth != null) {
+    const diff = monitor.goodHealth - 74;
+    items.push({
+      weight: Math.abs(diff) / 15,
+      text: diff > 4 ? 'bewoners voelen zich gezonder dan landelijk'
+        : diff < -4 ? 'bewoners voelen zich minder gezond dan landelijk'
+        : 'de ervaren gezondheid ligt rond het landelijk beeld',
+    });
+  }
+
+  const annual = data.lucht?.annual;
+  if (annual?.no2 != null) {
+    const over = annual.no2 / SCORING.whoNo2;
+    items.push({
+      weight: Math.abs(over - 1) * 0.6,
+      text: over <= 1 ? 'de lucht voldoet aan de WHO-advieswaarde'
+        : over <= 2 ? 'de lucht ligt boven de WHO-advieswaarde voor NO₂'
+        : 'de lucht ligt ruim boven de WHO-advieswaarde voor NO₂',
+    });
+  }
+
+  if (!items.length) return '';
+  items.sort((a, b) => b.weight - a.weight);
+  const line = items.slice(0, 2).map((i) => i.text).join(', en ');
+  return line.charAt(0).toUpperCase() + line.slice(1) + '.';
+}
+
 // ---------- Rendering ----------
 
 function render(place, data) {
@@ -924,6 +1089,7 @@ function render(place, data) {
     $('#total-label').textContent = scoreLabel(total);
   }
   $('#score-reason').textContent = total != null ? scoreReason(subscores) : '';
+  $('#score-context').textContent = total != null ? nationalContext(data) : '';
 
   renderCard('#card-lucht', subscores.lucht, luchtMain(data.lucht), luchtExplain(data.lucht), luchtDetails(data.lucht));
   renderCard('#card-geluid', subscores.geluid, geluidMain(data.geluid), geluidExplain(data.geluid), geluidDetails(data.geluid));

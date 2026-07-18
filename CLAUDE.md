@@ -15,8 +15,10 @@ Doelgroep: huizenkopers die een postcode intypen en in één oogopslag willen zi
 
 ## Technische keuzes
 
-- **Vanilla HTML/JS/CSS, geen build-stap.** Eén statische site, direct te hosten (GitHub Pages/Netlify). Bewuste keuze: geen framework, geen npm, geen bundler.
-- **Geen backend.** Alle data komt client-side uit open API's. Als een databron geen CORS ondersteunt, zoeken we een alternatieve bron — we bouwen géén proxy-server.
+- **Vanilla HTML/JS/CSS, geen build-stap.** Eén statische site. Bewuste keuze: geen framework, geen bundler.
+- **Geen backend voor de data.** Alle rapportdata komt client-side uit open API's. Als een databron geen CORS ondersteunt, zoeken we een alternatieve bron — we bouwen géén proxy-server.
+- **Uitzondering (afgesproken juli 2026): Cloudflare Pages Functions in `functions/`** voor drie randzaken die niet client-side kunnen: het dynamische deel-kaartje (`/og` + `_middleware.js`, want social-crawlers draaien geen JS), SEO-stadspagina's (`/in/:stad`, `/sitemap.xml`) en deel-statistieken (`/track`, `/stats`, D1-database). De leefscore zelf wordt nooit server-side berekend; de deel-URL draagt score en naam mee als parameters. De enige npm-dependency is `workers-og`, alleen voor de functies; de site zelf blijft dependency-vrij.
+- **Hosting: Cloudflare Pages** (project `woonikveilig`, deploy met `wrangler pages deploy .`; `.assetsignore` bepaalt wat níet publiek wordt — gitignore beschermt een directe deploy niet). Domein `woonikveilig.nl` is geregistreerd bij TransIP, DNS bij Cloudflare. De sleutel voor `/stats` staat in `.claude/stats-key.txt`.
 - Moderne browser-features (fetch, ES modules) zijn prima; geen ondersteuning voor oude browsers nodig.
 
 ## Databronnen

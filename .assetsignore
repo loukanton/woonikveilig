@@ -1,0 +1,16 @@
+# Files that must never be uploaded as public static assets by
+# `wrangler pages deploy`. Same syntax as .gitignore. Note: .gitignore does
+# NOT protect direct (non-git) deploys; this file does.
+.stats-key.txt
+.claude/
+.git/
+.gitignore
+.wrangler/
+.DS_Store
+.assetsignore
+node_modules/
+functions/
+wrangler.toml
+package.json
+package-lock.json
+CLAUDE.md

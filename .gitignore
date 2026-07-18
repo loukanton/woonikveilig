@@ -1,2 +1,6 @@
 .claude/
 .DS_Store
+node_modules/
+.wrangler/
+.stats-key.txt
+.deploy/
