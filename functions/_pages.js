@@ -89,40 +89,45 @@ function affiliateBlock(ws) {
 }
 
 // ---------- choropleth kaart ----------
-// Kleurschaal groen (gunstig) -> rood (ongunstig), t.o.v. een referentie.
-// goodness = hoe veel beter dan de referentie; richting via higherIsWorse.
-function rampColor(value, ref, higherIsWorse) {
-  if (value == null || ref == null || !ref) return '#e6e9ef'; // geen data
-  const goodness = higherIsWorse ? ref / value : value / ref;
-  if (goodness >= 1.3) return '#0a8a4a';
-  if (goodness >= 1.1) return '#5cb87f';
-  if (goodness >= 0.92) return '#e0a800';
-  if (goodness >= 0.75) return '#e07a1a';
-  return '#d64545';
+// Kleuren op basis van de VERDELING (kwintielen): elke kleur ~20% van de
+// gebieden. Zo toont de kaart echte variatie, ook als de waarden dicht bij
+// elkaar liggen (zoals ervaren gezondheid). Een vaste drempelschaal t.o.v. het
+// landelijk gemiddelde zou dan bijna alles in één middenkleur zetten.
+const MAP_SCALE = ['#0a8a4a', '#74c48d', '#f4e08a', '#e69a4c', '#d64545']; // gunstig -> ongunstig
+const MAP_NODATA = '#e6e9ef';
+const MAP_LABELS = ['gunstigst', 'gunstig', 'gemiddeld', 'ongunstig', 'ongunstigst'];
+
+// Kwintiel-grenzen uit de aanwezige waarden.
+function quintileBreaks(values) {
+  const v = values.filter((x) => x != null).sort((a, b) => a - b);
+  if (v.length < 5) return null;
+  const at = (p) => v[Math.min(v.length - 1, Math.floor(p * v.length))];
+  return [at(0.2), at(0.4), at(0.6), at(0.8)];
 }
 
-const MAP_LEGEND = [
-  ['#0a8a4a', 'veel gunstiger'],
-  ['#5cb87f', 'gunstiger'],
-  ['#e0a800', 'rond gemiddeld'],
-  ['#e07a1a', 'ongunstiger'],
-  ['#d64545', 'veel ongunstiger'],
-  ['#e6e9ef', 'geen data'],
-];
-
 // geo: {viewBox, features:[{slug,naam,d,...}]}. opts.valueBySlug: slug->getal.
+// higherIsWorse: true voor misdaad (lager=beter), false voor gezondheid (hoger=beter).
 export function renderMap(geo, opts) {
-  const { valueBySlug = {}, refValue, higherIsWorse = false, hrefBySlug, labelBySlug, activeSlug, caption } = opts;
+  const { valueBySlug = {}, higherIsWorse = false, hrefBySlug, labelBySlug, activeSlug, caption } = opts;
+  const breaks = quintileBreaks(Object.values(valueBySlug));
+  const colorFor = (v) => {
+    if (v == null || !breaks) return MAP_NODATA;
+    let bin = 0; // 0 = laagste waarde
+    for (const b of breaks) { if (v > b) bin++; else break; }
+    const idx = higherIsWorse ? bin : 4 - bin; // gunstig (groen) = idx 0
+    return MAP_SCALE[Math.max(0, Math.min(4, idx))];
+  };
   const paths = geo.features.map((f) => {
     const val = valueBySlug[f.slug];
-    const fill = activeSlug && f.slug === activeSlug ? '#f83898' : rampColor(val, refValue, higherIsWorse);
     const active = activeSlug && f.slug === activeSlug;
+    const fill = active ? '#f83898' : colorFor(val);
     const label = labelBySlug ? labelBySlug(f, val) : f.naam;
     const p = `<path d="${f.d}" fill="${fill}" stroke="${active ? '#08304c' : '#ffffff'}" stroke-width="${active ? 2.5 : 0.7}" stroke-linejoin="round"><title>${escapeHtml(label)}</title></path>`;
     const href = hrefBySlug ? hrefBySlug(f) : null;
     return href ? `<a href="${href}">${p}</a>` : p;
   }).join('');
-  const legend = MAP_LEGEND.map(([c, l]) => `<span class="map-key"><span class="map-swatch" style="background:${c}"></span>${l}</span>`).join('');
+  const legendItems = MAP_SCALE.map((c, i) => [c, MAP_LABELS[i]]).concat([[MAP_NODATA, 'geen data']]);
+  const legend = legendItems.map(([c, l]) => `<span class="map-key"><span class="map-swatch" style="background:${c}"></span>${l}</span>`).join('');
   return `<figure class="map-figure">
     <svg viewBox="${geo.viewBox}" role="img" aria-label="${escapeHtml(caption || 'Kaart van Nederland')}" preserveAspectRatio="xMidYMid meet">${paths}</svg>
     <div class="map-legend-row">${legend}</div>
@@ -696,7 +701,7 @@ export function renderProvinciePage(p, nl, allProvincies = [], geoProvincies = n
     hrefBySlug: (f) => `/provincie/${f.slug}`,
     labelBySlug: (f, v) => `${f.naam}: ${v != null ? fmtNum(v) + ' misdrijven per 1.000' : 'geen data'}`,
     activeSlug: p.slug,
-    caption: `${name} op de kaart van Nederland (kleur: misdrijven per 1.000 inwoners, groen is veiliger). Klik een provincie.`,
+    caption: `${name} op de kaart van Nederland. Kleur naar rangorde in misdrijven per 1.000 inwoners (groen = laagst, t.o.v. de andere provincies). Klik een provincie.`,
   }) : '';
   const canonical = `${CANONICAL_ORIGIN}/provincie/${p.slug}`;
   const title = `Leefbaarheid in provincie ${name}: veiligheid en gezondheid per gemeente`;
@@ -872,7 +877,7 @@ export function renderRankingGemeenten(gemeenten, nl, kind, geoGemeenten = null)
     refValue: cfg.nlVal, higherIsWorse: cfg.higherIsWorse,
     hrefBySlug: (f) => `/gemeente/${f.slug}`,
     labelBySlug: (f, v) => `${f.naam}: ${v != null ? cfg.fmt(v) : 'geen data'}`,
-    caption: `Elke gemeente ingekleurd naar ${cfg.colLabel.toLowerCase()} (groen is ${kind === 'gezondste' ? 'gezonder' : 'veiliger'}). Klik een gemeente voor de cijfers.`,
+    caption: `Elke gemeente naar rangorde in ${cfg.colLabel.toLowerCase()}: groen = ${kind === 'gezondste' ? '20% gezondst' : '20% veiligst'}, rood = 20% ${kind === 'gezondste' ? 'minst gezond' : 'minst veilig'}, t.o.v. alle gemeenten. Klik een gemeente voor de cijfers.`,
   }) : '';
 
   const rows = ranked.map((g, i) => `<tr>
