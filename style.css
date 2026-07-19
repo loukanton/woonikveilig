@@ -914,3 +914,83 @@ button.rank-name:focus-visible { outline: 2px solid var(--pink); outline-offset:
   #ranking-table td.extra { display: none; }
   #ranking-table th, #ranking-table td { padding: 8px; }
 }
+
+/* ---------- Informatiepagina's (/methode, /bronnen, /over, /pers, /dataset) ---------- */
+
+.doc-section { margin: 40px 0; }
+
+.doc-section h2 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.35rem;
+  text-transform: uppercase;
+  color: var(--ink);
+  margin: 0 0 12px;
+  text-wrap: balance;
+}
+
+.doc-section h3 {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--ink);
+  margin: 24px 0 8px;
+}
+
+.doc-section p,
+.doc-section li {
+  line-height: 1.7;
+  color: var(--body);
+  text-wrap: pretty;
+}
+
+.doc-section p { margin: 0 0 12px; }
+.doc-section ul, .doc-section ol { margin: 0 0 12px; padding-left: 20px; }
+.doc-section a { color: var(--pink-deep); font-weight: 700; }
+
+.doc-intro {
+  margin: 8px 0 0;
+  font-size: 1.02rem;
+  line-height: 1.6;
+  color: var(--body);
+  text-wrap: pretty;
+}
+
+.doc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+  margin: 0 0 12px;
+}
+
+.doc-table th, .doc-table td {
+  text-align: left;
+  padding: 8px 12px 8px 0;
+  border-bottom: 1px solid var(--inner-line);
+  vertical-align: top;
+  line-height: 1.5;
+}
+
+.doc-table th { color: var(--ink); font-weight: 800; font-size: 0.85rem; }
+.doc-table td.num, .doc-table th.num { text-align: right; padding-right: 0; }
+
+.doc-terms dt { font-weight: 800; color: var(--ink); }
+.doc-terms dd { margin: 0 0 10px; color: var(--body); line-height: 1.7; }
+
+.doc-note { color: var(--muted); font-size: 0.9rem; }
+
+.doc-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.doc-link, .doc-section a.doc-link {
+  display: inline-block;
+  padding: 6px 12px;
+  border: var(--rule);
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--ink);
+  text-decoration: none;
+}
+.doc-link:hover, .doc-section a.doc-link:hover { background: var(--pink-wash); color: var(--pink-deep); }
+
+/* Kleinere hero-kop voor pagina's met lange, niet-stuurbare titels
+   (datasetpagina's); de standaard h1-maat is bemeten op korte koppen. */
+h1.doc-h1 { font-size: clamp(1.9rem, 5.5vw, 3.2rem); line-height: 1.05; overflow-wrap: break-word; }

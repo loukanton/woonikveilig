@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Databronnen: waar de cijfers vandaan komen | Woon ik veilig?</title>
+  <meta name="description" content="Alle open databronnen achter de leefscore: RIVM, CBS, politie, Luchtmeetnet en Kadaster. Per bron wat erin zit, hoe vaak die ververst en wat de beperkingen zijn.">
+  <link rel="canonical" href="https://woonikveilig.nl/bronnen">
+  <meta property="og:title" content="Databronnen: waar de cijfers vandaan komen">
+  <meta property="og:description" content="Alle open databronnen achter de leefscore van Woon ik veilig?">
+  <meta property="og:type" content="article">
+  <meta property="og:locale" content="nl_NL">
+  <meta property="og:url" content="https://woonikveilig.nl/bronnen">
+  <meta property="og:image" content="https://woonikveilig.nl/og-image.png">
+  <meta name="theme-color" content="#f83898">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <div class="hero">
+      <p class="eyebrow"><span class="brand-sq" aria-hidden="true"></span> <a href="/" style="color:inherit;text-decoration:none;">Woon ik veilig?</a></p>
+      <h1>De <span class="accent">databronnen</span></h1>
+      <p class="tagline">Elk cijfer op deze site komt uit een officiële, openbare bron en wordt bij elke buurtcheck live opgehaald. Deze site slaat niets op en heeft geen eigen database: wat je ziet, staat ook bij de bron.</p>
+    </div>
+  </header>
+
+  <main>
+    <section class="doc-section">
+      <h2>Alle bronnen op een rij</h2>
+      <p>Klik op een bron voor de details: wat de data bevat, hoe vaak die ververst wordt, hoe wij die gebruiken en waar de beperkingen zitten.</p>
+      <table class="doc-table">
+        <thead>
+          <tr><th>Bron</th><th>Beheerder</th><th>Voedt</th><th>Ververst</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><a href="/dataset/rivm-nsl-lucht">RIVM/NSL luchtkwaliteitskaart</a></td><td>RIVM</td><td>lucht</td><td>jaarlijks</td></tr>
+          <tr><td><a href="/dataset/rivm-geluid">RIVM geluidskaarten (Lden)</a></td><td>RIVM</td><td>geluid, verkeer</td><td>om de paar jaar</td></tr>
+          <tr><td><a href="/dataset/cbs-criminaliteit">Geregistreerde misdrijven per buurt</a></td><td>politie, via CBS</td><td>veiligheid</td><td>maandelijks</td></tr>
+          <tr><td><a href="/dataset/rivm-gezondheidsmonitor">Gezondheidsmonitor per buurt</a></td><td>RIVM, GGD&rsquo;en, CBS</td><td>gezondheid</td><td>vierjaarlijks</td></tr>
+          <tr><td><a href="/dataset/cbs-doodsoorzaken">Doodsoorzaken per gemeente</a></td><td>CBS</td><td>gezondheid</td><td>jaarlijks</td></tr>
+          <tr><td><a href="/dataset/cbs-sterfte">Sterfte per gemeente</a></td><td>CBS</td><td>ter info</td><td>jaarlijks</td></tr>
+          <tr><td><a href="/dataset/rivm-overstroming">Overstromingskans (LIWO)</a></td><td>RIVM</td><td>omgeving</td><td>periodiek</td></tr>
+          <tr><td><a href="/dataset/rivm-externe-veiligheid">Risicokaart: gevaarlijke stoffen</a></td><td>RIVM</td><td>omgeving</td><td>periodiek</td></tr>
+          <tr><td><a href="/dataset/rivm-hoogspanning">Netkaart: hoogspanningslijnen</a></td><td>RIVM</td><td>omgeving</td><td>doorlopend</td></tr>
+          <tr><td><a href="/dataset/rivm-nucleair">Nucleaire installaties</a></td><td>RIVM</td><td>omgeving</td><td>bij wijzigingen</td></tr>
+          <tr><td><a href="/dataset/militaire-complexen">Militaire complexen (eigen lijst)</a></td><td>eigen redactie</td><td>omgeving</td><td>bij gelegenheid</td></tr>
+          <tr><td><a href="/dataset/luchtmeetnet">Luchtmeetnet (actuele metingen)</a></td><td>RIVM, GGD&rsquo;en</td><td>ter info</td><td>elk uur</td></tr>
+          <tr><td><a href="/dataset/pdok-locatieserver">PDOK Locatieserver</a></td><td>Kadaster</td><td>locatie</td><td>doorlopend</td></tr>
+          <tr><td><a href="/dataset/cbs-wijken-buurten">CBS Wijken en Buurten</a></td><td>CBS, via PDOK</td><td>buurtgrenzen, inwoners</td><td>jaarlijks</td></tr>
+        </tbody>
+      </table>
+      <p class="doc-note">De kaartondergrond in het rapport is de BRT-achtergrondkaart van het Kadaster (via PDOK); die is puur visueel en telt nergens in mee.</p>
+    </section>
+
+    <section class="doc-section">
+      <h2>Hoe wij met bronnen omgaan</h2>
+      <ul>
+        <li><strong>Live, zonder tussenopslag.</strong> Elke check haalt de cijfers rechtstreeks bij de bron op. Er zit geen eigen database tussen die kan verouderen.</li>
+        <li><strong>Peiljaar altijd zichtbaar.</strong> Bij elk cijfer in het rapport staat uit welk jaar het komt.</li>
+        <li><strong>Gaten zijn gaten.</strong> Als een bron geen data heeft voor een locatie, staat er "geen data" en telt het onderdeel niet mee in de score.</li>
+        <li><strong>Advies boven norm.</strong> Waar een gezondheidskundige advieswaarde bestaat (zoals de WHO-advieswaarden voor lucht), meten we daaraan, niet aan de ruimere wettelijke norm.</li>
+      </ul>
+      <p>Hoe de bronnen samen één leefscore worden, staat op de <a href="/methode">methodepagina</a>.</p>
+    </section>
+
+    <section class="doc-section">
+      <h2>Verder lezen</h2>
+      <nav class="doc-links" aria-label="Verder lezen">
+        <a class="doc-link" href="/methode">De methode</a>
+        <a class="doc-link" href="/over">Over deze site</a>
+        <a class="doc-link" href="/">Check een postcode</a>
+      </nav>
+      <p class="doc-note" style="margin-top:16px;">Laatst bijgewerkt: 19 juli 2026.</p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <a class="masthead footer-mark" href="https://brighthouse.consulting/" target="_blank" rel="noopener" aria-label="BrightHouse Consulting">Bright<span class="mh-house">House</span><span class="mh-dot"></span></a>
+    <p>Een initiatief van <strong>BrightHouse Consulting</strong>. Vragen of een fout gezien? Mail <a href="mailto:media@brighthouse.consulting">media@brighthouse.consulting</a>.</p>
+    <p>Geen cookies. Alle data komt live uit open bronnen; aan de leefscore kunnen geen rechten worden ontleend.</p>
+    <nav class="footer-cities" aria-label="Over deze site">
+      <span>Over deze site:</span>
+      <a href="/methode">Methode</a><a href="/bronnen">Bronnen</a><a href="/over">Over</a><a href="/pers">Pers</a>
+    </nav>
+  </footer>
+
+  <script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "fa781ea439e94009bce291b6c446d2cf"}'></script>
+</body>
+</html>

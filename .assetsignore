@@ -14,3 +14,5 @@ wrangler.toml
 package.json
 package-lock.json
 CLAUDE.md
+SEO-PLAN.md
+tools/

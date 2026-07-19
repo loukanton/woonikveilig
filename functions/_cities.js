@@ -129,6 +129,10 @@ export function renderCityPage(city) {
     <a class="masthead footer-mark" href="https://brighthouse.consulting/" target="_blank" rel="noopener" aria-label="BrightHouse Consulting">Bright<span class="mh-house">House</span><span class="mh-dot"></span></a>
     <p>Een initiatief van <strong>BrightHouse Consulting</strong>. Vragen of een fout gezien? Mail <a href="mailto:media@brighthouse.consulting">media@brighthouse.consulting</a>.</p>
     <p>Alle data komt live uit open bronnen; aan de leefscore kunnen geen rechten worden ontleend.</p>
+    <nav class="footer-cities" aria-label="Over deze site">
+      <span>Over deze site:</span>
+      <a href="/methode">Methode</a><a href="/bronnen">Bronnen</a><a href="/over">Over</a><a href="/pers">Pers</a>
+    </nav>
   </footer>
 </body>
 </html>`;
