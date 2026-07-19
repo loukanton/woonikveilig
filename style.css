@@ -982,7 +982,7 @@ button.rank-name:focus-visible { outline: 2px solid var(--pink); outline-offset:
 }
 
 .doc-table th { color: var(--ink); font-weight: 800; font-size: 0.85rem; }
-.doc-table td.num, .doc-table th.num { text-align: right; padding-right: 0; }
+.doc-table td.num, .doc-table th.num { text-align: right; padding-right: 0; padding-left: 18px; white-space: nowrap; }
 .doc-table td.doc-ref { color: var(--muted); font-weight: 600; font-size: 0.85rem; white-space: nowrap; padding-left: 12px; }
 
 .doc-terms dt { font-weight: 800; color: var(--ink); }
@@ -1070,10 +1070,13 @@ h1.hero-h1 { font-size: clamp(1.9rem, 5.5vw, 3.1rem); max-width: none; line-heig
 
 /* Brede tabellen scrollen zelf horizontaal; de pagina nooit. */
 .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-.table-scroll .doc-table { min-width: 460px; }
+.table-scroll .doc-table { min-width: 560px; }
 
-/* Ranglijsttabel: smalle rangkolom met tabular-nums */
+/* Ranglijsttabel: smalle rangkolom met tabular-nums, cijferkolommen op adem */
 .ranking-table td.rank, .ranking-table th.rank {
-  width: 2.4em; text-align: right; padding-right: 12px;
+  width: 2.4em; text-align: right; padding-right: 14px;
   color: var(--muted); font-variant-numeric: tabular-nums;
 }
+.ranking-table td.num, .ranking-table th.num { font-variant-numeric: tabular-nums; }
+.ranking-table a { text-decoration: none; font-weight: 700; }
+.ranking-table a:hover { text-decoration: underline; }

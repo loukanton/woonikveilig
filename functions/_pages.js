@@ -786,6 +786,7 @@ export function renderRankingGemeenten(gemeenten, nl, kind) {
   const rows = ranked.map((g, i) => `<tr>
     <td class="rank">${i + 1}</td>
     <td><a href="/gemeente/${g.slug}">${escapeHtml(g.name)}</a></td>
+    <td>${g.provincie ? `<a href="/provincie/${g.provincie}">${escapeHtml(g.provincieNaam || '')}</a>` : ''}</td>
     <td class="num">${fmtInt(g.inwoners)}</td>
     <td class="num">${colorCell(g[cfg.metric], cfg.nlVal, { higherIsWorse: cfg.higherIsWorse }, cfg.fmt)}</td>
   </tr>`).join('');
@@ -808,7 +809,7 @@ export function renderRankingGemeenten(gemeenten, nl, kind) {
     <section class="doc-section">
       <h2>Ranglijst</h2>
       <div class="table-scroll"><table class="doc-table ranking-table">
-        <thead><tr><th class="rank">#</th><th>Gemeente</th><th class="num">Inwoners</th><th class="num">${cfg.colLabel}</th></tr></thead>
+        <thead><tr><th class="rank">#</th><th>Gemeente</th><th>Provincie</th><th class="num">Inwoners</th><th class="num">${cfg.colLabel}</th></tr></thead>
         <tbody>${rows}</tbody>
       </table></div>
       <p class="doc-note">Nederland: ${cfg.fmt(cfg.nlVal)}. Alleen gemeenten met minstens ${fmtInt(RANKING_MIN_INWONERS)} inwoners. Bron: CBS, politie, RIVM, ${escapeHtml(gemeenten[0]?.peildatum || '')}.</p>
@@ -871,6 +872,7 @@ export function renderOnderzoekBuurten(data, nl, year) {
     <td class="rank">${i + 1}</td>
     <td><a href="/gemeente/${b.gemeenteSlug}/${b.buurtSlug}">${escapeHtml(b.buurt)}</a></td>
     <td><a href="/gemeente/${b.gemeenteSlug}">${escapeHtml(b.gemeente)}</a></td>
+    <td>${b.provincieSlug ? `<a href="/provincie/${b.provincieSlug}">${escapeHtml(b.provincie || '')}</a>` : escapeHtml(b.provincie || '')}</td>
     <td class="num">${fmtInt(b.inwoners)}</td>
     <td class="num">${colorCell(b.per1000, nl.veiligheid?.per1000, { higherIsWorse: true }, fmtNum)}</td>
   </tr>`).join('');
@@ -893,7 +895,7 @@ export function renderOnderzoekBuurten(data, nl, year) {
     <section class="doc-section">
       <h2>Top ${lijst.length} veiligste buurten van Nederland</h2>
       <div class="table-scroll"><table class="doc-table ranking-table">
-        <thead><tr><th class="rank">#</th><th>Buurt</th><th>Gemeente</th><th class="num">Inwoners</th><th class="num">Misdrijven /1.000</th></tr></thead>
+        <thead><tr><th class="rank">#</th><th>Buurt</th><th>Gemeente</th><th>Provincie</th><th class="num">Inwoners</th><th class="num">Misdrijven /1.000</th></tr></thead>
         <tbody>${rows}</tbody>
       </table></div>
       <p class="doc-note">Landelijk gemiddelde: ${fmtNum(nl.veiligheid?.per1000)} misdrijven per 1.000 inwoners. ${fmtInt(data.aantalMeegenomen)} buurten met minstens ${fmtInt(data.minInwoners)} inwoners meegewogen. Bron: politie via CBS (tabel 47022NED), ${escapeHtml(data.peildatum)}.</p>

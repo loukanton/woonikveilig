@@ -359,9 +359,13 @@ async function buildGemeente(g, crimeWindow, nl) {
     .filter((b) => b.demografie?.postcode)
     .sort((a, b) => (b.demografie.inwoners || 0) - (a.demografie.inwoners || 0))[0]?.demografie.postcode ?? null;
   const gmHealth = aggregateHealth(gmHealthRows.map((r) => ({ ...r, WijkenEnBuurten: g.code }))).get(g.code);
-  // gemeente-misdaad: som van de buurten (laatste 12 mnd) / inwoners
-  const gmCrimeTotal = buurten.reduce((s, b) => s + (b.veiligheid?.laatste12Maanden ?? 0), 0);
-  const gmCrimePer1000 = gmKern.inwoners ? Math.round((gmCrimeTotal / gmKern.inwoners) * 1000 * 10) / 10 : null;
+  // Gemeente-misdaad rechtstreeks uit de ruwe politierijen optellen, niet via de
+  // gekoppelde buurten. Bij sommige gemeenten (bijv. Best) verschilt de
+  // buurtindeling tussen de politietabel en de kerncijfertabel, waardoor de
+  // per-buurt-koppeling faalt; het gemeentetotaal blijft dan wel correct.
+  const gmCrime = aggregateGemeenteCrime(crimeRows);
+  const gmCrimePer1000 = (gmCrime.total != null && gmKern.inwoners)
+    ? Math.round((gmCrime.total / gmKern.inwoners) * 1000 * 10) / 10 : null;
 
   const record = {
     schemaVersion: SCHEMA_VERSION,
@@ -375,8 +379,8 @@ async function buildGemeente(g, crimeWindow, nl) {
     demografie: gmKern,
     veiligheid: {
       per1000: gmCrimePer1000,
-      laatste12Maanden: gmCrimeTotal,
-      trend: aggregateCrimeYears(buurten),
+      laatste12Maanden: gmCrime.total ?? 0,
+      trend: gmCrime.perJaar,
       bron: 'Politie via CBS (tabel 47022NED)',
     },
     gezondheid: {
@@ -450,12 +454,21 @@ function aggregateCrime(rows, years) {
   return byBuurt;
 }
 
-function aggregateCrimeYears(buurten) {
-  const trend = {};
-  for (const b of buurten) {
-    for (const [y, v] of Object.entries(b.veiligheid?.trend ?? {})) trend[y] = (trend[y] ?? 0) + v;
+// Gemeentetotaal uit de ruwe politierijen: som over alle buurtcodes per maand
+// en per jaar. Robuust tegen buurtcode-mismatch (de politietabel en de
+// kerncijfertabel gebruiken bij sommige gemeenten een andere buurtindeling).
+// total = som van de 12 recentste maanden; null als er geen enkele rij is.
+function aggregateGemeenteCrime(rows) {
+  if (!rows.length) return { total: null, perJaar: {} };
+  const monthly = {}, perJaar = {};
+  for (const r of rows) {
+    const p = trim(r.Perioden), y = p.slice(0, 4), v = r.GeregistreerdeMisdrijven_1 ?? 0;
+    monthly[p] = (monthly[p] ?? 0) + v;
+    perJaar[y] = (perJaar[y] ?? 0) + v;
   }
-  return trend;
+  const recent = Object.keys(monthly).sort().slice(-12);
+  const total = recent.reduce((s, p) => s + monthly[p], 0);
+  return { total, perJaar };
 }
 
 function aggregateHealth(rows) {
@@ -506,6 +519,13 @@ const round3 = (v) => (v == null ? null : Math.round(v * 1000) / 1000);
 
 // Kleine samenvatting per gemeente voor index + provincie-aggregatie.
 function summarize(record) {
+  // Betrouwbaarheid van de buurt-koppeling: als de som van de buurtmisdrijven
+  // ver onder het (uit de ruwe rijen berekende) gemeentetotaal ligt, gebruiken
+  // de politie- en kerncijfertabel een andere buurtindeling en zijn de
+  // buurt-per1000's te laag. Die buurten horen niet in de landelijke ranglijst.
+  const gmTotal = record.veiligheid?.laatste12Maanden || 0;
+  const sumBuurt = (record.buurten ?? []).reduce((s, b) => s + (b.veiligheid?.laatste12Maanden || 0), 0);
+  const buurtCrimeBetrouwbaar = gmTotal > 0 ? sumBuurt >= gmTotal * 0.9 : true;
   return {
     code: record.code,
     name: record.name,
@@ -516,6 +536,7 @@ function summarize(record) {
     goedErvarenGezondheid: record.gezondheid?.goedErvarenGezondheid ?? null,
     aantalBuurten: record.buurten?.length ?? 0,
     aantalWijken: record.wijken?.length ?? 0,
+    buurtCrimeBetrouwbaar,
     buurten: (record.buurten ?? []).map((b) => ({
       code: b.code, name: b.name, slug: b.slug,
       inwoners: b.demografie?.inwoners ?? null,
@@ -603,7 +624,8 @@ async function buildIndex(built, provinces, nl) {
     peildatum: PEILDATUM,
     gemeenten: built
       .map((g) => ({
-        code: g.code, slug: g.slug, name: g.name, provincie: g.provincie.slug,
+        code: g.code, slug: g.slug, name: g.name,
+        provincie: g.provincie.slug, provincieNaam: g.provincie.name,
         inwoners: g.inwoners,
         veiligheidPer1000: g.veiligheidPer1000,
         goedErvarenGezondheid: g.goedErvarenGezondheid,
@@ -639,12 +661,13 @@ async function buildIndex(built, provinces, nl) {
   // buurten gaat (kleine buurten schommelen te sterk voor een landelijke lijst).
   const nationaalBuurten = [];
   for (const g of built) {
+    if (!g.buurtCrimeBetrouwbaar) continue; // buurtindeling wijkt af, per1000 te laag
     for (const b of (g.buurten || [])) {
       if ((b.inwoners || 0) >= 1000 && b.per1000 != null) {
         nationaalBuurten.push({
           buurt: b.name, buurtSlug: b.slug,
           gemeente: g.name, gemeenteSlug: g.slug,
-          provincie: g.provincie.name,
+          provincie: g.provincie.name, provincieSlug: g.provincie.slug,
           inwoners: b.inwoners, per1000: b.per1000,
         });
       }
