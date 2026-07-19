@@ -10,7 +10,7 @@ cd "$(dirname "$0")"
 rm -rf .deploy
 mkdir -p .deploy/fonts
 
-cp index.html app.js style.css robots.txt _routes.json .deploy/
+cp index.html app.js style.css robots.txt _routes.json _headers .deploy/
 cp methode.html bronnen.html over.html pers.html .deploy/
 cp favicon.svg favicon.png og-image.png .deploy/
 cp fonts/*.woff2 fonts/*.ttf .deploy/fonts/

@@ -73,6 +73,21 @@ export function colorCell(value, ref, opts, fmt) {
   return `<span class="${c.good ? 'pos' : 'neg'}">${txt}</span>`;
 }
 
+// ---------- affiliate (subtiele advertentie-tekstlink) ----------
+// Zelfde Daisycon-deeplink als de homepage; per paginatype een eigen ws-subid
+// voor attributie. De reclame-melding is wettelijk verplicht en staat altijd.
+const AFFILIATE = {
+  base: 'https://rkn3.net/c/?si=14571&li=1723607&wi=423205&ws=',
+  text: 'Ongedierte in of rond het huis? Een professionele bestrijder pakt het snel en gericht aan.',
+  link: 'Ongediertebestrijding aanvragen',
+};
+function affiliateBlock(ws) {
+  return `<aside class="ad-inline" aria-label="Advertentie">
+    <span class="ad-label">Advertentie</span>
+    <span>${AFFILIATE.text} <a href="${AFFILIATE.base}${escapeHtml(ws)}" target="_blank" rel="sponsored nofollow noopener">${AFFILIATE.link}</a></span>
+  </aside>`;
+}
+
 // ---------- choropleth kaart ----------
 // Kleurschaal groen (gunstig) -> rood (ongunstig), t.o.v. een referentie.
 // goodness = hoe veel beter dan de referentie; richting via higherIsWorse.
@@ -320,6 +335,8 @@ export function renderGemeentePage(g, nl, provRecord) {
     ${renderFaq(faq)}
 
     ${otherGemeenten}
+
+    ${affiliateBlock('gemeente')}
 
     <section class="doc-section">
       <h2>Bronnen en actualiteit</h2>
@@ -591,6 +608,8 @@ export function renderBuurtPage(b, g, nl) {
       <p style="margin-top:14px;"><a href="/gemeente/${g.slug}">Alle cijfers van ${escapeHtml(g.name)} &rarr;</a></p>
     </section>` : ''}
 
+    ${affiliateBlock('buurt')}
+
     <section class="doc-section">
       <h2>Bronnen en actualiteit</h2>
       <p>De cijfers komen uit open data van CBS, de politie en het RIVM, samengesteld op ${escapeHtml(g.peildatum)}. Elke buurtcheck haalt de gegevens live bij de bron op. Zie <a href="/bronnen">alle databronnen</a> en de <a href="/methode">methode</a> achter de leefscore.</p>
@@ -761,6 +780,8 @@ export function renderProvinciePage(p, nl, allProvincies = [], geoProvincies = n
       <h2>Andere provincies</h2>
       <nav class="doc-links" aria-label="Andere provincies">${provNav}</nav>
     </section>
+
+    ${affiliateBlock('provincie')}
 
     <section class="doc-section">
       <h2>Bronnen en actualiteit</h2>

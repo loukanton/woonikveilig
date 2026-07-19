@@ -1145,3 +1145,28 @@ h1.hero-h1 { font-size: clamp(1.9rem, 5.5vw, 3.1rem); max-width: none; line-heig
 @media (max-width: 680px) {
   .explore-cards { grid-template-columns: 1fr; }
 }
+
+/* ---------- Subtiele inline-advertentie ---------- */
+.ad-inline {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 32px 0;
+  padding: 12px 14px;
+  border: 1px dashed var(--inner-line);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: var(--muted);
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+.ad-inline .ad-label {
+  flex: none;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding-top: 2px;
+}
+.ad-inline a { color: var(--pink-deep); font-weight: 700; white-space: nowrap; }
