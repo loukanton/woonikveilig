@@ -1106,3 +1106,42 @@ h1.hero-h1 { font-size: clamp(1.9rem, 5.5vw, 3.1rem); max-width: none; line-heig
 .map-key { display: inline-flex; align-items: center; gap: 5px; }
 .map-swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; border: 1px solid rgba(0,0,0,0.08); }
 .map-figure figcaption { margin-top: 10px; color: var(--muted); font-size: 0.85rem; text-align: center; text-wrap: pretty; }
+
+/* ---------- Homepage: onderzoek & ranglijsten ---------- */
+.home-explore { margin: 56px 0 20px; }
+.home-explore h2 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.35rem;
+  text-transform: uppercase;
+  color: var(--ink);
+  margin: 0 0 16px;
+}
+.explore-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.explore-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 16px 18px;
+  border: var(--rule);
+  border-radius: 10px;
+  text-decoration: none;
+  background: var(--paper);
+  transition: transform 0.12s ease-out, box-shadow 0.12s ease-out;
+}
+.explore-card:hover { transform: translate(-2px, -2px); box-shadow: 4px 4px 0 var(--ink); }
+.explore-card:focus-visible { outline: 2px solid var(--pink); outline-offset: 3px; }
+.explore-eyebrow {
+  font-weight: 800; font-size: 0.66rem; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--pink-deep);
+}
+.explore-title { font-weight: 800; font-size: 1.02rem; color: var(--ink); line-height: 1.25; text-wrap: balance; }
+.explore-sub { font-size: 0.9rem; color: var(--muted); line-height: 1.5; text-wrap: pretty; }
+
+@media (max-width: 680px) {
+  .explore-cards { grid-template-columns: 1fr; }
+}

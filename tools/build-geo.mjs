@@ -14,7 +14,11 @@ import { dirname, join } from 'node:path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(__dirname, '..', 'data');
-const BEST_WFS = 'https://service.pdok.nl/kadaster/bestuurlijkegebieden/wfs/v1_0';
+// CBS gebiedsindelingen: de "gegeneraliseerde" lagen zijn op de kustlijn
+// geknipt (land only), dus IJsselmeer, Waddenzee en de Zeeuwse delta blijven
+// open water. De bestuurlijke-gebieden-laag rekent water mee en maakt van NL
+// een blok; die gebruiken we daarom NIET.
+const GEB_WFS = 'https://service.pdok.nl/cbs/gebiedsindelingen/2024/wfs/v1_0';
 const TARGET_W = 1000; // viewBox breedte in SVG-eenheden
 
 const args = process.argv.slice(2);
@@ -45,7 +49,7 @@ async function fetchLayer(typeName, propertyName) {
   let start = 0;
   const count = 1000;
   for (;;) {
-    const url = `${BEST_WFS}?service=WFS&version=2.0.0&request=GetFeature&typeNames=${typeName}`
+    const url = `${GEB_WFS}?service=WFS&version=2.0.0&request=GetFeature&typeNames=${typeName}`
       + `&outputFormat=application/json&srsName=EPSG:28992&count=${count}&startIndex=${start}`
       + (propertyName ? `&propertyName=${propertyName}` : '');
     const json = await fetchJson(url);
@@ -127,7 +131,7 @@ function featureToPath(geometry, tol, project, minAreaSq) {
 
 async function build() {
   console.log('Provinciegeometrie ophalen…');
-  const provFeatures = await fetchLayer('bestuurlijkegebieden:Provinciegebied', 'naam,code');
+  const provFeatures = await fetchLayer('gebiedsindelingen:provincie_gegeneraliseerd', 'statnaam,statcode');
   // Gedeelde viewBox uit de provincie-bbox (heel NL).
   const bbox = computeBbox(provFeatures);
   const scale = TARGET_W / (bbox.maxX - bbox.minX);
@@ -139,8 +143,8 @@ async function build() {
   ];
 
   const provincies = provFeatures.map((f) => ({
-    slug: slugify(f.properties.naam),
-    naam: f.properties.naam,
+    slug: slugify(f.properties.statnaam),
+    naam: f.properties.statnaam,
     d: featureToPath(f.geometry, 400, project, 1e6),
   })).sort((a, b) => a.naam.localeCompare(b.naam));
   await writeFile(join(DATA_DIR, 'geo-provincies.json'),
@@ -150,10 +154,10 @@ async function build() {
   if (provinciesOnly) return;
 
   console.log('Gemeentegeometrie ophalen (kan even duren)…');
-  const gemFeatures = await fetchLayer('bestuurlijkegebieden:Gemeentegebied', 'naam,code');
+  const gemFeatures = await fetchLayer('gebiedsindelingen:gemeente_gegeneraliseerd', 'statnaam,statcode');
   const gemeenten = gemFeatures.map((f) => ({
-    slug: slugify(f.properties.naam),
-    naam: f.properties.naam,
+    slug: slugify(f.properties.statnaam),
+    naam: f.properties.statnaam,
     d: featureToPath(f.geometry, 200, project, 5e5),
   })).sort((a, b) => a.naam.localeCompare(b.naam));
   await writeFile(join(DATA_DIR, 'geo-gemeenten.json'),
