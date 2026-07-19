@@ -889,7 +889,9 @@ button.rank-name:focus-visible { outline: 2px solid var(--pink); outline-offset:
 .footer-cities a { color: var(--muted); font-weight: 600; }
 /* Zichtbaar scheidingsteken met lucht eromheen; var(--inner-line) was zo licht
    dat de links tegen elkaar leken te plakken. */
-.footer-cities a:not(:last-child)::after { content: "·"; color: var(--muted); font-weight: 700; margin: 0 9px; }
+/* Spaties rond de punt geven afbreekpunten, zodat lange link-rijen (24 steden)
+   op smalle schermen netjes wrappen in plaats van buiten de pagina te lopen. */
+.footer-cities a:not(:last-child)::after { content: " · "; color: var(--muted); font-weight: 700; }
 .footer-cities a:hover { color: var(--pink-deep); }
 
 .footer-mark {
@@ -1172,6 +1174,8 @@ h1.hero-h1 { font-size: clamp(1.9rem, 5.5vw, 3.1rem); max-width: none; line-heig
 .ad-inline a { color: var(--pink-deep); font-weight: 700; white-space: nowrap; }
 
 /* ---------- Logo / topbalk (op elke pagina, terug naar home) ---------- */
+/* Wordmark in de BrightHouse-masthead-stijl: "Woon ik" navy, "veilig?" wit op
+   een roze rechthoek met navy slagschaduw, exact als de h1-accent en het merk. */
 .site-topbar {
   max-width: 860px;
   margin: 0 auto;
@@ -1179,21 +1183,27 @@ h1.hero-h1 { font-size: clamp(1.9rem, 5.5vw, 3.1rem); max-width: none; line-heig
 }
 .site-logo {
   display: inline-flex;
-  align-items: center;
-  gap: 10px;
+  align-items: baseline;
+  gap: 0.28em;
   text-decoration: none;
-  border-radius: 8px;
-}
-.site-logo-mark { width: 32px; height: 32px; border-radius: 7px; flex: none; display: block; }
-.site-logo-text {
   font-family: var(--font-display);
   font-weight: 400;
-  font-size: 15px;
-  text-transform: uppercase;
-  letter-spacing: -0.01em;
-  color: var(--ink);
+  font-size: 20px;
   line-height: 1;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  color: var(--ink);
+  border-radius: 6px;
 }
-.site-logo-text b { color: var(--pink-deep); font-weight: 400; }
-.site-logo:hover .site-logo-text { color: var(--pink-deep); }
+.site-logo .logo-block {
+  display: inline-block;
+  color: #fff;
+  background: var(--pink);
+  padding: 0.02em 0.16em 0.08em;
+  box-shadow: 0.08em 0.08em 0 var(--ink);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  transition: background 0.12s ease-out;
+}
+.site-logo:hover .logo-block { background: var(--pink-deep); }
 .site-logo:focus-visible { outline: 2px solid var(--pink); outline-offset: 3px; }
