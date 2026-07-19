@@ -257,7 +257,7 @@ export function renderDatasetPage(ds) {
     <p>Geen cookies. Alle data komt live uit open bronnen; aan de leefscore kunnen geen rechten worden ontleend.</p>
     <nav class="footer-cities" aria-label="Over deze site">
       <span>Over deze site:</span>
-      <a href="/methode">Methode</a><a href="/bronnen">Bronnen</a><a href="/over">Over</a><a href="/pers">Pers</a>
+      <a href="/methode">Methode</a><a href="/bronnen">Bronnen</a><a href="/over">Over</a><a href="/pers">Pers</a><a href="/privacy">Privacy</a>
     </nav>
   </footer>
 
