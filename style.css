@@ -1235,3 +1235,14 @@ h1.hero-h1 { font-size: clamp(1.9rem, 5.5vw, 3.1rem); max-width: none; line-heig
 .buurt-list a:hover { text-decoration: underline; }
 .buurt-nolink { color: var(--muted); }
 @media (max-width: 680px) { .buurt-list { columns: 2; column-gap: 16px; font-size: 0.92rem; } }
+
+/* Uitleg-regel als je via een dorp op de gemeentepagina komt */
+.plaats-note {
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  background: var(--pink-wash);
+  border-radius: 8px;
+  font-size: 0.92rem;
+  color: var(--ink);
+  line-height: 1.5;
+}

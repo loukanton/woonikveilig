@@ -304,6 +304,9 @@ ${topbar()}
       { name },
     ])}
 
+    <p id="plaats-note" class="plaats-note" hidden></p>
+    <script>(function(){var p=new URLSearchParams(location.search).get('plaats');if(!p)return;var el=document.getElementById('plaats-note');if(!el)return;el.textContent='Je zocht op '+p+'. Dat is een plaats in gemeente '+${JSON.stringify(name)}+'. Hieronder de cijfers voor de hele gemeente; onderaan kun je een specifieke buurt opzoeken.';el.hidden=false;})();</script>
+
     <section class="ai-overview" aria-label="Samenvatting">
       <p>${summary}</p>
     </section>

@@ -318,8 +318,14 @@ async function lookup(query) {
   const isPostcode = /^[1-9][0-9]{3}[A-Z]{2}$/.test(compact);
   const hasNumber = /\d/.test(query);
   if (!isPostcode && !hasNumber) {
-    const slug = await resolveGemeenteSlug(query);
-    if (slug) { window.location.href = `/gemeente/${slug}`; return; }
+    const target = await resolveGemeenteSlug(query);
+    if (target) {
+      // Bij een dorp/woonplaats de naam meegeven, zodat de gemeentepagina kan
+      // uitleggen dat het dorp onder die gemeente valt.
+      const suffix = target.plaats ? `?plaats=${encodeURIComponent(target.plaats)}` : '';
+      window.location.href = `/gemeente/${target.slug}${suffix}`;
+      return;
+    }
   }
   await performLookup(() => geocode(query));
 }
@@ -348,7 +354,12 @@ async function resolveGemeenteSlug(query) {
     if (!gemeenteIndexCache) {
       gemeenteIndexCache = (await fetchJson('/data/gemeenten.json')).gemeenten || [];
     }
-    return gemeenteIndexCache.find((g) => g.code === code)?.slug ?? null;
+    const entry = gemeenteIndexCache.find((g) => g.code === code);
+    if (!entry) return null;
+    // Bij een woonplaats die niet de gemeente zelf is, de dorpsnaam teruggeven.
+    const plaats = doc.type === 'woonplaats' && norm(doc.woonplaatsnaam || doc.weergavenaam) !== norm(entry.name)
+      ? (doc.woonplaatsnaam || doc.weergavenaam) : null;
+    return { slug: entry.slug, plaats };
   } catch {
     return null; // bij twijfel gewoon het rapport tonen
   }
