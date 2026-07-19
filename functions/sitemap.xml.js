@@ -4,7 +4,7 @@
 import { CANONICAL_ORIGIN } from './_cities.js';
 
 export const onRequest = () => {
-  const children = ['paginas', 'gemeenten'];
+  const children = ['paginas', 'gemeenten', 'buurten'];
   const body = `<?xml version="1.0" encoding="UTF-8"?>
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${children.map((c) => `  <sitemap><loc>${CANONICAL_ORIGIN}/sitemaps/${c}.xml</loc></sitemap>`).join('\n')}

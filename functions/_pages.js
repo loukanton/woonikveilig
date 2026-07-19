@@ -381,13 +381,14 @@ function vergelijkTable(g, nl) {
 }
 
 function buurtHighlights(g) {
-  // Toon de veiligste buurten (laagste per1000) met minstens 200 inwoners.
+  // Toon de veiligste buurten (laagste per1000) met minstens 200 inwoners;
+  // elke buurt linkt naar haar eigen pagina.
   const scored = (g.buurten || [])
     .filter((b) => b.veiligheid?.per1000 != null && (b.demografie?.inwoners || 0) >= 200)
     .sort((a, b) => a.veiligheid.per1000 - b.veiligheid.per1000)
     .slice(0, 8);
   if (!scored.length) return '';
-  const items = scored.map((b) => `<li><strong>${escapeHtml(b.name)}</strong>: ${fmtNum(b.veiligheid.per1000)} misdrijven per 1.000 inwoners</li>`).join('');
+  const items = scored.map((b) => `<li><a href="/gemeente/${g.slug}/${b.slug}">${escapeHtml(b.name)}</a>: ${fmtNum(b.veiligheid.per1000)} misdrijven per 1.000 inwoners</li>`).join('');
   return `<p>Buurten met de minste geregistreerde misdrijven per 1.000 inwoners:</p><ul class="doc-list">${items}</ul>`;
 }
 
@@ -409,6 +410,176 @@ function buildGemeenteFaq(g, nl, crime, health) {
   faq.push({
     q: `Hoe wordt de leefscore van ${g.name} bepaald?`,
     a: 'De leefscore is een gewogen gemiddelde van lucht, geluid, verkeer, veiligheid, gezondheid en omgevingsrisico, berekend per postcode. Deze pagina toont de cijfers die per gemeente in bulk beschikbaar zijn; de volledige leefscore reken je uit door hierboven een postcode te checken.',
+  });
+  return faq;
+}
+
+// ---------- buurt page ----------
+// b: de buurt uit het gemeentebestand; g: gemeenterecord; nl: landelijk.
+// De route bepaalt of de buurt de drempel haalt; deze functie rendert.
+export function renderBuurtPage(b, g, nl) {
+  const name = b.name;
+  const prov = g.provincie;
+  const d = b.demografie || {};
+  const canonical = `${CANONICAL_ORIGIN}/gemeente/${g.slug}/${b.slug}`;
+  const title = `Leefbaarheid in ${name} (${g.name}): veiligheid en cijfers`;
+  const description = `Hoe leefbaar is de buurt ${name} in ${g.name}? Bekijk veiligheid, gezondheid en kerncijfers uit open data, en check de leefscore per postcode.`;
+
+  const crimeVsGem = compare(b.veiligheid?.per1000, g.veiligheid?.per1000, { higherIsWorse: true });
+  const crimeVsNl = compare(b.veiligheid?.per1000, nl.veiligheid?.per1000, { higherIsWorse: true });
+  const healthVsNl = compare(b.gezondheid?.goedErvarenGezondheid, nl.gezondheid?.goedErvarenGezondheid);
+
+  const summary = buildBuurtSummary(b, g, nl, crimeVsGem, healthVsNl);
+  const faq = buildBuurtFaq(b, g, nl, crimeVsGem);
+
+  const jsonLd = [
+    {
+      '@context': 'https://schema.org', '@type': 'Place', name,
+      containedInPlace: { '@type': 'AdministrativeArea', name: g.name },
+      address: { '@type': 'PostalAddress', addressLocality: g.name, addressRegion: prov.name, addressCountry: 'NL' },
+    },
+    breadcrumbLd([
+      { name: 'Nederland', href: '/' },
+      { name: prov.name, href: `/provincie/${prov.slug}` },
+      { name: g.name, href: `/gemeente/${g.slug}` },
+      { name },
+    ]),
+    faqLd(faq),
+  ];
+
+  const siblings = (g.buurten || [])
+    .filter((x) => x.slug !== b.slug && (x.demografie?.inwoners || 0) >= 200)
+    .sort((a, c) => a.name.localeCompare(c.name));
+
+  return `${head({ title, description, canonical, jsonLd })}
+<body>
+  <header>
+    <div class="hero">
+      <p class="eyebrow"><span class="brand-sq" aria-hidden="true"></span> <a href="/gemeente/${g.slug}" style="color:inherit;text-decoration:none;">${escapeHtml(g.name)}</a></p>
+      <h1 class="hero-h1">Leefbaarheid in <span class="accent">${escapeHtml(name)}</span></h1>
+      <p class="tagline">De buurt ${escapeHtml(name)} in ${escapeHtml(g.name)}: veiligheid, gezondheid en kerncijfers uit open data. Check de volledige leefscore per postcode.</p>
+    </div>
+  </header>
+
+  <main>
+    ${breadcrumb([
+      { name: 'Nederland', href: '/' },
+      { name: prov.name, href: `/provincie/${prov.slug}` },
+      { name: g.name, href: `/gemeente/${g.slug}` },
+      { name },
+    ])}
+
+    <section class="ai-overview" aria-label="Samenvatting">
+      <p>${summary}</p>
+    </section>
+
+    <form class="search-bar" action="/" method="get" autocomplete="off">
+      <input type="text" id="postcode-input" name="pc" placeholder="Postcode in ${escapeHtml(name)}, bijv. ${escapeHtml(d.postcode || g.voorbeeldPostcode || '1234AB')}"
+             inputmode="text" spellcheck="false" required aria-label="Postcode">
+      <button type="submit" id="search-button">Check de buurt</button>
+    </form>
+
+    <section class="doc-section">
+      <h2>Veiligheid in ${escapeHtml(name)}</h2>
+      <p>${buildBuurtCrimeText(b, g, nl, crimeVsGem, crimeVsNl)}</p>
+      ${trendChart(b.veiligheid?.trend, { label: `Geregistreerde misdrijven in ${name} per jaar` })}
+      <p class="doc-note">Geregistreerde misdrijven per 1.000 inwoners, laatste 12 maanden. Bron: politie via CBS (tabel 47022NED), ${escapeHtml(g.peildatum)}. In kleine buurten schommelen deze cijfers sterk.</p>
+    </section>
+
+    ${b.gezondheid?.goedErvarenGezondheid != null ? `
+    <section class="doc-section">
+      <h2>Gezondheid in ${escapeHtml(name)}</h2>
+      <p>In ${escapeHtml(name)} ervaart ${fmtPct(b.gezondheid.goedErvarenGezondheid)} van de inwoners (18+) de eigen gezondheid als goed${healthVsNl.word ? `, ${healthVsNl.word} het landelijk gemiddelde van ${fmtPct(nl.gezondheid.goedErvarenGezondheid)}` : ''}.</p>
+      <p class="doc-note">Modelschatting per buurt. Bron: RIVM Gezondheidsmonitor (tabel 50150NED).</p>
+    </section>` : ''}
+
+    <section class="doc-section">
+      <h2>Kerncijfers van ${escapeHtml(name)}</h2>
+      ${kerncijferTable(d)}
+      <p class="doc-note">Bron: CBS Kerncijfers wijken en buurten 2024 (tabel 85984NED).</p>
+    </section>
+
+    <section class="doc-section">
+      <h2>${escapeHtml(name)} vergeleken</h2>
+      <table class="doc-table">
+        <thead><tr><th></th><th class="num">${escapeHtml(name)}</th><th class="num">${escapeHtml(g.name)}</th><th class="num">Nederland</th></tr></thead>
+        <tbody>
+          <tr><td>Misdrijven per 1.000 inw.</td><td class="num">${fmtNum(b.veiligheid?.per1000)}</td><td class="num">${fmtNum(g.veiligheid?.per1000)}</td><td class="num">${fmtNum(nl.veiligheid?.per1000)}</td></tr>
+          <tr><td>Voelt zich gezond</td><td class="num">${fmtPct(b.gezondheid?.goedErvarenGezondheid)}</td><td class="num">${fmtPct(g.gezondheid?.goedErvarenGezondheid)}</td><td class="num">${fmtPct(nl.gezondheid?.goedErvarenGezondheid)}</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    ${renderFaq(faq)}
+
+    ${siblings.length ? `
+    <section class="doc-section">
+      <h2>Andere buurten in ${escapeHtml(g.name)}</h2>
+      <nav class="doc-links" aria-label="Andere buurten in ${escapeHtml(g.name)}">
+        ${siblings.slice(0, 40).map((x) => `<a class="doc-link" href="/gemeente/${g.slug}/${x.slug}">${escapeHtml(x.name)}</a>`).join('')}
+      </nav>
+      <p style="margin-top:14px;"><a href="/gemeente/${g.slug}">Alle cijfers van ${escapeHtml(g.name)} &rarr;</a></p>
+    </section>` : ''}
+
+    <section class="doc-section">
+      <h2>Bronnen en actualiteit</h2>
+      <p>De cijfers komen uit open data van CBS, de politie en het RIVM, samengesteld op ${escapeHtml(g.peildatum)}. Elke buurtcheck haalt de gegevens live bij de bron op. Zie <a href="/bronnen">alle databronnen</a> en de <a href="/methode">methode</a> achter de leefscore.</p>
+    </section>
+  </main>
+
+${footer()}
+
+  <script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "fa781ea439e94009bce291b6c446d2cf"}'></script>
+</body>
+</html>`;
+}
+
+function buildBuurtSummary(b, g, nl, crimeVsGem, healthVsNl) {
+  const name = escapeHtml(b.name);
+  const d = b.demografie || {};
+  const parts = [];
+  const size = d.inwoners ? `${name} is een buurt in ${escapeHtml(g.name)} met ${fmtInt(d.inwoners)} inwoners` : `${name} is een buurt in ${escapeHtml(g.name)}`;
+  parts.push(`${size}.`);
+  if (b.veiligheid?.per1000 != null && crimeVsGem.word) {
+    parts.push(pick([
+      `Er worden ${fmtNum(b.veiligheid.per1000)} misdrijven per 1.000 inwoners per jaar geregistreerd, ${crimeVsGem.word} het gemeentegemiddelde van ${fmtNum(g.veiligheid.per1000)}.`,
+      `Met ${fmtNum(b.veiligheid.per1000)} geregistreerde misdrijven per 1.000 inwoners ligt de buurt ${crimeVsGem.word} het gemiddelde van ${escapeHtml(g.name)} (${fmtNum(g.veiligheid.per1000)}).`,
+    ], b.code));
+  }
+  if (b.gezondheid?.goedErvarenGezondheid != null && healthVsNl.word) {
+    parts.push(`${fmtPct(b.gezondheid.goedErvarenGezondheid)} van de inwoners voelt zich gezond, ${healthVsNl.word} het landelijk beeld.`);
+  }
+  return parts.join(' ');
+}
+
+function buildBuurtCrimeText(b, g, nl, crimeVsGem, crimeVsNl) {
+  const name = escapeHtml(b.name);
+  if (b.veiligheid?.per1000 == null) return `Voor ${name} zijn geen misdaadcijfers beschikbaar.`;
+  const trend = b.veiligheid.trend || {};
+  const years = Object.keys(trend).sort();
+  let trendText = '';
+  if (years.length >= 2) {
+    const first = trend[years[0]], last = trend[years.at(-1)];
+    const dir = last > first * 1.05 ? 'gestegen' : (last < first * 0.95 ? 'gedaald' : 'ongeveer gelijk gebleven');
+    trendText = ` Tussen ${years[0]} en ${years.at(-1)} is het aantal geregistreerde misdrijven ${dir}.`;
+  }
+  const parts = [`In ${name} worden per jaar ongeveer ${fmtNum(b.veiligheid.per1000)} misdrijven per 1.000 inwoners geregistreerd.`];
+  if (crimeVsGem.word) parts.push(`Dat is ${crimeVsGem.word} het gemeentegemiddelde van ${escapeHtml(g.name)} (${fmtNum(g.veiligheid.per1000)})`);
+  if (crimeVsNl.word) parts.push(`en ${crimeVsNl.word} het landelijk gemiddelde van ${fmtNum(nl.veiligheid.per1000)}`);
+  return parts.join(' ').replace(/\)\s+en /, ') en ') + '.' + trendText;
+}
+
+function buildBuurtFaq(b, g, nl, crimeVsGem) {
+  const faq = [];
+  if (b.veiligheid?.per1000 != null) {
+    faq.push({
+      q: `Hoe veilig is ${b.name}?`,
+      a: `In ${b.name} (${g.name}) worden per jaar ongeveer ${fmtNum(b.veiligheid.per1000)} misdrijven per 1.000 inwoners geregistreerd${crimeVsGem.word ? `, ${crimeVsGem.word} het gemeentegemiddelde` : ''}. Het gaat om registraties op pleeglocatie; in kleine buurten schommelen de cijfers sterk.`,
+    });
+  }
+  faq.push({
+    q: `Wat is de leefscore van ${b.name}?`,
+    a: `De volledige leefscore combineert lucht, geluid, verkeer, veiligheid, gezondheid en omgevingsrisico en wordt per postcode berekend. Check hierboven een postcode in ${b.name} voor het complete rapport.`,
   });
   return faq;
 }

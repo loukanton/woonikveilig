@@ -41,6 +41,9 @@ const T = {
   causes: `${CBS}/80142ned`,    // doodsoorzaken per gemeente
 };
 const CRIME_TREND_YEARS = 5;    // aantal jaren voor de misdaadtrend
+// Buurten onder deze grens krijgen geen eigen (indexeerbare) pagina: CBS
+// onderdrukt daar veel cijfers en één incident vertekent het beeld.
+const BUURT_MIN_RESIDENTS = 200;
 const HEALTH_YEARS = ['2012JJ00', '2016JJ00', '2020JJ00', '2022JJ00', '2024JJ00'];
 const CONCURRENCY = 3;          // gelijktijdige gemeente-builds (bronservers sparen)
 const RETRIES = 4;
@@ -85,6 +88,9 @@ const OPT = {
   gemeente: flag('--gemeente'),
   limit: flag('--limit') ? Number(flag('--limit')) : null,
   force: has('--force'),
+  // Bestaande gemeentebestanden opnieuw verwerken (dedup slugs, afgeleide
+  // bestanden herbouwen) zonder de bron-API's opnieuw te bevragen.
+  reprocess: has('--reprocess'),
 };
 
 // ---------- helpers ----------
@@ -257,6 +263,12 @@ async function buildGemeente(g, crimeWindow, nl) {
     // Resumable: lees de summary terug voor de index/provincie-aggregatie.
     try {
       const cached = JSON.parse(await readFile(file, 'utf8'));
+      if (OPT.reprocess) {
+        // Transformaties opnieuw toepassen op de cache, zonder de API's te
+        // bevragen (dedup slugs), en het bestand terugschrijven.
+        dedupeSlugs(cached.buurten || []);
+        await writeJson(file, cached);
+      }
       return summarize(cached);
     } catch { /* corrupt: opnieuw bouwen */ }
   }
@@ -340,6 +352,7 @@ async function buildGemeente(g, crimeWindow, nl) {
     }
   }
 
+  dedupeSlugs(buurten);
   const gmKern = pickKern(kernRows.find((r) => trim(r.WijkenEnBuurten) === g.code));
   // Voorbeeldpostcode: PC4 van de grootste buurt (gemeente-rij heeft er geen).
   const voorbeeldPostcode = buurten
@@ -383,6 +396,18 @@ async function buildGemeente(g, crimeWindow, nl) {
 
   await writeJson(file, record);
   return summarize(record);
+}
+
+// Sommige gemeenten hebben meerdere buurten met dezelfde naam (bijv. twee
+// "Centrum" in verschillende wijken, of meerdere "Verspreide huizen"). Maak de
+// slugs uniek binnen de gemeente met een codesuffix, deterministisch en stabiel
+// (niet afhankelijk van volgorde), zodat elke buurt een eigen URL houdt.
+function dedupeSlugs(buurten) {
+  const count = {};
+  for (const b of buurten) count[b.slug] = (count[b.slug] || 0) + 1;
+  for (const b of buurten) {
+    if (count[b.slug] > 1) b.slug = `${b.slug}-${b.code.slice(-4)}`;
+  }
 }
 
 function soortToType(soort) {
@@ -492,7 +517,9 @@ function summarize(record) {
     aantalBuurten: record.buurten?.length ?? 0,
     aantalWijken: record.wijken?.length ?? 0,
     buurten: (record.buurten ?? []).map((b) => ({
-      code: b.code, name: b.name, slug: b.slug, inwoners: b.demografie?.inwoners ?? null,
+      code: b.code, name: b.name, slug: b.slug,
+      inwoners: b.demografie?.inwoners ?? null,
+      per1000: b.veiligheid?.per1000 ?? null,
     })),
   };
 }
@@ -582,6 +609,24 @@ async function buildIndex(built, provinces, nl) {
     schemaVersion: SCHEMA_VERSION,
     peildatum: PEILDATUM,
     provincies: provinces,
+  });
+
+  // Buurten die de kwaliteitsdrempel halen (>=200 inwoners en een misdaadcijfer):
+  // alleen die krijgen een indexeerbare pagina en staan in de sitemap. Compact
+  // ({g:gemeenteslug, s:buurtslug}) zodat de sitemap-functie één klein bestand
+  // leest in plaats van alle gemeentebestanden.
+  const buurten = [];
+  for (const g of built) {
+    for (const b of (g.buurten || [])) {
+      if ((b.inwoners || 0) >= BUURT_MIN_RESIDENTS && b.per1000 != null) {
+        buurten.push({ g: g.slug, s: b.slug });
+      }
+    }
+  }
+  await writeJson(join(DATA_DIR, 'buurten.json'), {
+    schemaVersion: SCHEMA_VERSION,
+    peildatum: PEILDATUM,
+    buurten,
   });
 }
 

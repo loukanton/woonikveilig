@@ -31,6 +31,10 @@ export const onRequest = async ({ params, env }) => {
   } else if (name === 'gemeenten') {
     const gemeenten = (await loadData(env, '/data/gemeenten.json'))?.gemeenten || [];
     urls = gemeenten.map((g) => `${CANONICAL_ORIGIN}/gemeente/${g.slug}`);
+  } else if (name === 'buurten') {
+    // Alleen buurten die de kwaliteitsdrempel halen (uit data/buurten.json).
+    const buurten = (await loadData(env, '/data/buurten.json'))?.buurten || [];
+    urls = buurten.map((b) => `${CANONICAL_ORIGIN}/gemeente/${b.g}/${b.s}`);
   } else {
     return new Response('Not found', { status: 404 });
   }
