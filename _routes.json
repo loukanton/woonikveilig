@@ -9,7 +9,10 @@
     "/stats",
     "/in/*",
     "/dataset/*",
-    "/sitemap.xml"
+    "/gemeente/*",
+    "/provincie/*",
+    "/sitemap.xml",
+    "/sitemaps/*"
   ],
   "exclude": []
 }

@@ -117,6 +117,10 @@ h1 {
   margin: 20px auto 0;
   max-width: 12ch;
   text-wrap: balance;
+  /* Lange accentwoorden (stadsnamen, 'LEEFSCORE') mogen breken in plaats van
+     buiten de paginamarge te steken; met box-decoration-break loopt het roze
+     blok netjes door over twee regels. */
+  overflow-wrap: break-word;
 }
 
 /* Het logo-blok uit het wordmark: wit op roze met navy slagschaduw */
@@ -881,9 +885,11 @@ button.rank-name:focus-visible { outline: 2px solid var(--pink); outline-offset:
   border-top: 1px solid var(--inner-line);
   line-height: 2;
 }
-.footer-cities span { color: var(--muted); font-weight: 700; margin-right: 4px; }
+.footer-cities span { color: var(--muted); font-weight: 700; margin-right: 8px; }
 .footer-cities a { color: var(--muted); font-weight: 600; }
-.footer-cities a:not(:last-child)::after { content: " ·"; color: var(--inner-line); font-weight: 400; }
+/* Zichtbaar scheidingsteken met lucht eromheen; var(--inner-line) was zo licht
+   dat de links tegen elkaar leken te plakken. */
+.footer-cities a:not(:last-child)::after { content: "·"; color: var(--muted); font-weight: 700; margin: 0 9px; }
 .footer-cities a:hover { color: var(--pink-deep); }
 
 .footer-mark {
@@ -913,6 +919,11 @@ button.rank-name:focus-visible { outline: 2px solid var(--pink); outline-offset:
   #ranking-table th.extra,
   #ranking-table td.extra { display: none; }
   #ranking-table th, #ranking-table td { padding: 8px; }
+  /* Kleinere hero-kop op smalle schermen, en de 12ch-max-width los, zodat het
+     roze accentwoord (lange stadsnamen, 'LEEFSCORE') de volle contentbreedte
+     mag gebruiken en binnen de paginamarge blijft. */
+  h1 { font-size: clamp(1.8rem, 7.5vw, 2.9rem); max-width: none; }
+  h1 .accent { overflow-wrap: break-word; }
 }
 
 /* ---------- Informatiepagina's (/methode, /bronnen, /over, /pers, /dataset) ---------- */
@@ -994,3 +1005,55 @@ button.rank-name:focus-visible { outline: 2px solid var(--pink); outline-offset:
 /* Kleinere hero-kop voor pagina's met lange, niet-stuurbare titels
    (datasetpagina's); de standaard h1-maat is bemeten op korte koppen. */
 h1.doc-h1 { font-size: clamp(1.9rem, 5.5vw, 3.2rem); line-height: 1.05; overflow-wrap: break-word; }
+
+/* ---------- Data-gedreven pagina's (gemeente, provincie) ---------- */
+
+/* AI-overzicht / samenvatting bovenaan: citeerbaar, rustig kader */
+.ai-overview {
+  margin: 8px 0 4px;
+  padding: 16px 18px;
+  background: var(--pink-wash);
+  border-radius: 10px;
+  border: 1px solid #f6cbe0;
+}
+.ai-overview p { margin: 0; font-size: 1.02rem; line-height: 1.6; color: var(--ink); text-wrap: pretty; }
+
+.breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 20px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+.breadcrumb a { color: var(--muted); text-decoration: none; }
+.breadcrumb a:hover { color: var(--pink-deep); }
+.breadcrumb .crumb-sep { color: var(--inner-line); }
+.breadcrumb span[aria-current] { color: var(--ink); }
+
+.faq-item {
+  border-top: 1px solid var(--inner-line);
+  padding: 12px 0;
+}
+.faq-item summary {
+  font-weight: 800;
+  color: var(--ink);
+  cursor: pointer;
+  list-style: none;
+}
+.faq-item summary::-webkit-details-marker { display: none; }
+.faq-item summary::before { content: "+ "; color: var(--pink-deep); font-weight: 800; }
+.faq-item[open] summary::before { content: "– "; }
+.faq-item p { margin: 8px 0 0; line-height: 1.7; color: var(--body); }
+
+.doc-list { margin: 0; padding-left: 20px; line-height: 1.8; color: var(--body); }
+.doc-list strong { color: var(--ink); }
+
+.trend { margin: 12px 0; }
+.trend svg { width: 100%; max-width: 360px; height: auto; }
+
+/* Kleinere hero-kop voor de data-pagina's: "Leefbaarheid in X" bevat lange
+   woorden die in de volle hero-maat lelijk mid-woord zouden breken. */
+h1.hero-h1 { font-size: clamp(1.9rem, 5.5vw, 3.1rem); max-width: none; line-height: 1.0; }

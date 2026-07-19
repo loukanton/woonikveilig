@@ -555,6 +555,21 @@ async function buildIndex(built, provinces, nl) {
     provincies: provinces,
     entities,
   });
+
+  // Compacte lookups die de paginafuncties gebruiken om een slug op te lossen
+  // zonder de volledige index (met alle buurten) te laden.
+  await writeJson(join(DATA_DIR, 'gemeenten.json'), {
+    schemaVersion: SCHEMA_VERSION,
+    peildatum: PEILDATUM,
+    gemeenten: built
+      .map((g) => ({ code: g.code, slug: g.slug, name: g.name, provincie: g.provincie.slug, inwoners: g.inwoners }))
+      .sort((a, b) => a.name.localeCompare(b.name)),
+  });
+  await writeJson(join(DATA_DIR, 'provincies.json'), {
+    schemaVersion: SCHEMA_VERSION,
+    peildatum: PEILDATUM,
+    provincies: provinces,
+  });
 }
 
 async function writeJson(path, obj) {
