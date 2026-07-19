@@ -65,6 +65,7 @@ const KERN_FIELDS = {
   AfstandTotGroteSupermarkt_111: 'afstandSupermarkt',
   AfstandTotSchool_113: 'afstandSchool',
   ScholenBinnen3Km_114: 'scholenBinnen3km',
+  MeestVoorkomendePostcode_118: 'postcode', // PC4; string, '.' = onbekend
 };
 
 const STEDELIJKHEID_LABELS = {
@@ -235,7 +236,14 @@ function pickKern(row) {
   const out = {};
   for (const [key, name] of Object.entries(KERN_FIELDS)) {
     const raw = row[key];
-    out[name] = (name === 'stedelijkheid') ? (num(raw) ?? null) : pos(num(raw));
+    if (name === 'postcode') {
+      const pc = trim(raw);
+      out.postcode = pc && pc !== '.' ? pc : null;
+    } else if (name === 'stedelijkheid') {
+      out.stedelijkheid = num(raw) ?? null;
+    } else {
+      out[name] = pos(num(raw));
+    }
   }
   if (out.stedelijkheid != null) out.stedelijkheidLabel = STEDELIJKHEID_LABELS[out.stedelijkheid] ?? null;
   if (out.oppervlakteLandHa != null) out.oppervlakteLandKm2 = Math.round(out.oppervlakteLandHa / 100 * 10) / 10;
@@ -333,6 +341,10 @@ async function buildGemeente(g, crimeWindow, nl) {
   }
 
   const gmKern = pickKern(kernRows.find((r) => trim(r.WijkenEnBuurten) === g.code));
+  // Voorbeeldpostcode: PC4 van de grootste buurt (gemeente-rij heeft er geen).
+  const voorbeeldPostcode = buurten
+    .filter((b) => b.demografie?.postcode)
+    .sort((a, b) => (b.demografie.inwoners || 0) - (a.demografie.inwoners || 0))[0]?.demografie.postcode ?? null;
   const gmHealth = aggregateHealth(gmHealthRows.map((r) => ({ ...r, WijkenEnBuurten: g.code }))).get(g.code);
   // gemeente-misdaad: som van de buurten (laatste 12 mnd) / inwoners
   const gmCrimeTotal = buurten.reduce((s, b) => s + (b.veiligheid?.laatste12Maanden ?? 0), 0);
@@ -346,6 +358,7 @@ async function buildGemeente(g, crimeWindow, nl) {
     name: g.name,
     slug: slugify(g.name),
     provincie: { code: g.provinceCode, name: g.provinceName, slug: slugify(g.provinceName) },
+    voorbeeldPostcode,
     demografie: gmKern,
     veiligheid: {
       per1000: gmCrimePer1000,

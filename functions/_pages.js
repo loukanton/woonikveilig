@@ -212,7 +212,7 @@ export function renderGemeentePage(g, nl, provRecord) {
     </section>
 
     <form class="search-bar" action="/" method="get" autocomplete="off">
-      <input type="text" id="postcode-input" name="pc" placeholder="Postcode in ${escapeHtml(name)}, bijv. ${escapeHtml(examplerPostcode(d))}"
+      <input type="text" id="postcode-input" name="pc" placeholder="Postcode in ${escapeHtml(name)}, bijv. ${escapeHtml(g.voorbeeldPostcode || '1234AB')}"
              inputmode="text" spellcheck="false" required aria-label="Postcode">
       <button type="submit" id="search-button">Check de buurt</button>
     </form>
@@ -227,7 +227,8 @@ export function renderGemeentePage(g, nl, provRecord) {
     <section class="doc-section">
       <h2>Gezondheid in ${escapeHtml(name)}</h2>
       <p>${buildHealthText(g, nl, health)}</p>
-      <p class="doc-note">Aandeel inwoners (18+) dat de eigen gezondheid als goed ervaart. Bron: RIVM Gezondheidsmonitor (tabel 50150NED).</p>
+      ${gezondheidExtra(g)}
+      <p class="doc-note">Ervaren gezondheid: aandeel inwoners (18+) dat de eigen gezondheid als goed ervaart, RIVM Gezondheidsmonitor (tabel 50150NED). Sterfte en doodsoorzaken: CBS per gemeente. Absolute sterfte telt niet mee in de leefscore, omdat die vooral de leeftijdsopbouw weerspiegelt.</p>
     </section>
 
     <section class="doc-section">
@@ -264,8 +265,6 @@ ${footer()}
 </body>
 </html>`;
 }
-
-function examplerPostcode() { return '1234AB'; }
 
 function buildGemeenteSummary(g, nl, crime, health) {
   const name = escapeHtml(g.name);
@@ -326,19 +325,42 @@ function buildHealthText(g, nl, health) {
   return `In ${name} ervaart ${fmtPct(g.gezondheid.goedErvarenGezondheid)} van de inwoners van 18 jaar en ouder de eigen gezondheid als goed${cmp}.`;
 }
 
+// Aanvullende gezondheidscijfers die we al verzamelen: sterfte en het aandeel
+// kanker/ademhalingsziekten in de sterfgevallen, met Nederland als referentie.
+function gezondheidExtra(g) {
+  const rows = [];
+  if (g.sterfte?.perMille != null) {
+    rows.push(['Sterfte per 1.000 inwoners', fmtNum(g.sterfte.perMille), g.sterfte.jaar]);
+  }
+  const c = g.doodsoorzaken;
+  if (c?.kanker != null) {
+    rows.push(['Aandeel kanker in sterfgevallen', fmtPct(c.kanker * 100), `NL: ${fmtPct((c.kankerNl ?? 0) * 100)}`]);
+  }
+  if (c?.ademhaling != null) {
+    rows.push(['Aandeel ademhalingsziekten', fmtPct(c.ademhaling * 100), `NL: ${fmtPct((c.ademhalingNl ?? 0) * 100)}`]);
+  }
+  if (!rows.length) return '';
+  return `<table class="doc-table"><tbody>${rows.map((r) => `<tr><td>${r[0]}</td><td class="num">${r[1]}</td><td class="num doc-ref">${escapeHtml(r[2] || '')}</td></tr>`).join('')}</tbody></table>`;
+}
+
 function kerncijferTable(d) {
+  const pctOf = (part) => (part != null && d.inwoners ? fmtPct((part / d.inwoners) * 100) : 'geen data');
   const rows = [
     ['Inwoners', fmtInt(d.inwoners)],
     ['Bevolkingsdichtheid', d.dichtheid != null ? `${fmtInt(d.dichtheid)} per km²` : 'geen data'],
     ['Stedelijkheid', d.stedelijkheidLabel || 'geen data'],
+    ['Inwoners tot 15 jaar', pctOf(d.inwoners0tot15)],
+    ['Inwoners 65 jaar en ouder', pctOf(d.inwoners65plus)],
+    ['Gemiddelde huishoudensgrootte', d.huishoudensgrootte != null ? fmtNum(d.huishoudensgrootte) : 'geen data'],
     ['Gemiddelde WOZ-waarde', fmtEuro(d.wozWaarde)],
     ['Koopwoningen', fmtPct(d.koopwoningen)],
     ['Eengezinswoningen', fmtPct(d.eengezinswoning)],
     ['Gemiddeld inkomen per inwoner', fmtEuro(d.inkomenPerInwoner)],
-    ['Inwoners 65 jaar en ouder', d.inwoners65plus != null && d.inwoners ? fmtPct((d.inwoners65plus / d.inwoners) * 100) : 'geen data'],
     ['Oppervlakte land', d.oppervlakteLandKm2 != null ? `${fmtNum(d.oppervlakteLandKm2)} km²` : 'geen data'],
     ['Afstand tot supermarkt', d.afstandSupermarkt != null ? `${fmtNum(d.afstandSupermarkt)} km` : 'geen data'],
     ['Afstand tot huisarts', d.afstandHuisarts != null ? `${fmtNum(d.afstandHuisarts)} km` : 'geen data'],
+    ['Afstand tot basisschool', d.afstandSchool != null ? `${fmtNum(d.afstandSchool)} km` : 'geen data'],
+    ['Scholen binnen 3 km', d.scholenBinnen3km != null ? fmtNum(d.scholenBinnen3km) : 'geen data'],
   ].filter((r) => r[1] !== 'geen data');
   return `<table class="doc-table"><tbody>${rows.map((r) => `<tr><td>${r[0]}</td><td class="num">${r[1]}</td></tr>`).join('')}</tbody></table>`;
 }
