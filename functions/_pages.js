@@ -154,6 +154,16 @@ function head({ title, description, canonical, jsonLd }) {
 </head>`;
 }
 
+// Logo linksboven op elke pagina; klik = terug naar de homepage.
+function topbar() {
+  return `  <div class="site-topbar">
+    <a class="site-logo" href="/" aria-label="Woon ik veilig? — naar de homepage">
+      <svg class="site-logo-mark" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="10" fill="#f83898"/><text x="29" y="45" font-family="'Archivo Black','Arial Black',sans-serif" font-size="36" font-weight="900" fill="#fff" text-anchor="middle">W</text><rect x="47" y="38" width="8" height="8" fill="#08304c"/></svg>
+      <span class="site-logo-text">Woon ik <b>veilig?</b></span>
+    </a>
+  </div>`;
+}
+
 function footer() {
   return `  <footer class="site-footer">
     <a class="masthead footer-mark" href="https://brighthouse.consulting/" target="_blank" rel="noopener" aria-label="BrightHouse Consulting">Bright<span class="mh-house">House</span><span class="mh-dot"></span></a>
@@ -275,6 +285,7 @@ export function renderGemeentePage(g, nl, provRecord) {
 
   return `${head({ title, description, canonical, jsonLd })}
 <body>
+${topbar()}
   <header>
     <div class="hero">
       <p class="eyebrow"><span class="brand-sq" aria-hidden="true"></span> <a href="/provincie/${prov.slug}" style="color:inherit;text-decoration:none;">${escapeHtml(prov.name)}</a></p>
@@ -304,7 +315,7 @@ export function renderGemeentePage(g, nl, provRecord) {
       <h2>Veiligheid in ${escapeHtml(name)}</h2>
       <p>${buildCrimeText(g, nl, crime)}</p>
       ${trendChart(g.veiligheid?.trend, { label: `Geregistreerde misdrijven in ${name} per jaar` })}
-      <p class="doc-note">Geregistreerde misdrijven per 1.000 inwoners, laatste 12 maanden. Bron: politie via CBS (tabel 47022NED), ${escapeHtml(g.peildatum)}.</p>
+      <p class="doc-note">Geregistreerde misdrijven per 1.000 inwoners, gemiddeld per jaar over 2021-2025. Bron: politie via CBS (tabel 47022NED), ${escapeHtml(g.peildatum)}.</p>
     </section>
 
     <section class="doc-section">
@@ -540,6 +551,7 @@ export function renderBuurtPage(b, g, nl) {
 
   return `${head({ title, description, canonical, jsonLd })}
 <body>
+${topbar()}
   <header>
     <div class="hero">
       <p class="eyebrow"><span class="brand-sq" aria-hidden="true"></span> <a href="/gemeente/${g.slug}" style="color:inherit;text-decoration:none;">${escapeHtml(g.name)}</a></p>
@@ -570,7 +582,7 @@ export function renderBuurtPage(b, g, nl) {
       <h2>Veiligheid in ${escapeHtml(name)}</h2>
       <p>${buildBuurtCrimeText(b, g, nl, crimeVsGem, crimeVsNl)}</p>
       ${trendChart(b.veiligheid?.trend, { label: `Geregistreerde misdrijven in ${name} per jaar` })}
-      <p class="doc-note">Geregistreerde misdrijven per 1.000 inwoners, laatste 12 maanden. Bron: politie via CBS (tabel 47022NED), ${escapeHtml(g.peildatum)}. In kleine buurten schommelen deze cijfers sterk.</p>
+      <p class="doc-note">Geregistreerde misdrijven per 1.000 inwoners, gemiddeld per jaar over 2021-2025. Bron: politie via CBS (tabel 47022NED), ${escapeHtml(g.peildatum)}. In kleine buurten schommelen deze cijfers sterk.</p>
     </section>
 
     ${b.gezondheid?.goedErvarenGezondheid != null ? `
@@ -725,6 +737,7 @@ export function renderProvinciePage(p, nl, allProvincies = [], geoProvincies = n
 
   return `${head({ title, description, canonical, jsonLd })}
 <body>
+${topbar()}
   <header>
     <div class="hero">
       <p class="eyebrow"><span class="brand-sq" aria-hidden="true"></span> Provincie</p>
@@ -874,6 +887,7 @@ export function renderRankingGemeenten(gemeenten, nl, kind, geoGemeenten = null)
 
   return `${head({ title, description, canonical, jsonLd })}
 <body>
+${topbar()}
   <header>
     <div class="hero">
       <p class="eyebrow"><span class="brand-sq" aria-hidden="true"></span> Ranglijst</p>
@@ -935,7 +949,7 @@ export function renderOnderzoekBuurten(data, nl, year) {
 
   const faq = [
     { q: `Wat is de veiligste buurt van Nederland in ${year}?`, a: top ? `${top.buurt} in ${top.gemeente}, met ${fmtNum(top.per1000)} geregistreerde misdrijven per 1.000 inwoners.` : 'Geen data.' },
-    { q: 'Hoe is dit onderzoek uitgevoerd?', a: `Voor elke buurt in Nederland met minstens ${data.minInwoners} inwoners is het aantal geregistreerde misdrijven per 1.000 inwoners over de laatste twaalf maanden berekend (politie via CBS). De buurten zijn daarop gerangschikt. In totaal zijn ${data.aantalMeegenomen} buurten meegenomen.` },
+    { q: 'Hoe is dit onderzoek uitgevoerd?', a: `Voor elke buurt in Nederland met minstens ${data.minInwoners} inwoners is het gemiddelde aantal geregistreerde misdrijven per 1.000 inwoners per jaar berekend (over 2021-2025, om ruis in kleine buurten te dempen) (politie via CBS). De buurten zijn daarop gerangschikt. In totaal zijn ${data.aantalMeegenomen} buurten meegenomen.` },
     { q: 'Betekent een lage score dat een buurt echt veilig is?', a: 'Het gaat om geregistreerde misdrijven op pleeglocatie; niet elk misdrijf wordt aangegeven, en woonwijken scoren van nature lager dan winkel- of uitgaansgebieden. De cijfers zijn een indicatie, geen absoluut oordeel.' },
   ];
 
@@ -962,6 +976,7 @@ export function renderOnderzoekBuurten(data, nl, year) {
 
   return `${head({ title, description, canonical, jsonLd })}
 <body>
+${topbar()}
   <header>
     <div class="hero">
       <p class="eyebrow"><span class="brand-sq" aria-hidden="true"></span> Onderzoek ${year}</p>

@@ -1170,3 +1170,30 @@ h1.hero-h1 { font-size: clamp(1.9rem, 5.5vw, 3.1rem); max-width: none; line-heig
   padding-top: 2px;
 }
 .ad-inline a { color: var(--pink-deep); font-weight: 700; white-space: nowrap; }
+
+/* ---------- Logo / topbalk (op elke pagina, terug naar home) ---------- */
+.site-topbar {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 18px 24px 0;
+}
+.site-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  border-radius: 8px;
+}
+.site-logo-mark { width: 32px; height: 32px; border-radius: 7px; flex: none; display: block; }
+.site-logo-text {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  line-height: 1;
+}
+.site-logo-text b { color: var(--pink-deep); font-weight: 400; }
+.site-logo:hover .site-logo-text { color: var(--pink-deep); }
+.site-logo:focus-visible { outline: 2px solid var(--pink); outline-offset: 3px; }

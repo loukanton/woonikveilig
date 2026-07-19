@@ -208,6 +208,12 @@ export function renderDatasetPage(ds) {
   <script type="application/ld+json">${JSON.stringify(jsonLd)}</script>
 </head>
 <body>
+  <div class="site-topbar">
+    <a class="site-logo" href="/" aria-label="Woon ik veilig? — naar de homepage">
+      <svg class="site-logo-mark" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="10" fill="#f83898"/><text x="29" y="45" font-family="'Archivo Black','Arial Black',sans-serif" font-size="36" font-weight="900" fill="#fff" text-anchor="middle">W</text><rect x="47" y="38" width="8" height="8" fill="#08304c"/></svg>
+      <span class="site-logo-text">Woon ik <b>veilig?</b></span>
+    </a>
+  </div>
   <header>
     <div class="hero">
       <p class="eyebrow"><span class="brand-sq" aria-hidden="true"></span> <a href="/bronnen" style="color:inherit;text-decoration:none;">Databronnen</a></p>

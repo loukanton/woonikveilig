@@ -265,8 +265,13 @@ async function buildGemeente(g, crimeWindow, nl) {
       const cached = JSON.parse(await readFile(file, 'utf8'));
       if (OPT.reprocess) {
         // Transformaties opnieuw toepassen op de cache, zonder de API's te
-        // bevragen (dedup slugs), en het bestand terugschrijven.
+        // bevragen: dedup slugs en de per1000 herrekenen als robuust meerjarig
+        // gemiddelde uit de opgeslagen trend.
         dedupeSlugs(cached.buurten || []);
+        for (const b of (cached.buurten || [])) {
+          if (b.veiligheid) b.veiligheid.per1000 = robustPer1000(b.veiligheid.trend, b.demografie?.inwoners);
+        }
+        if (cached.veiligheid) cached.veiligheid.per1000 = robustPer1000(cached.veiligheid.trend, cached.demografie?.inwoners);
         await writeJson(file, cached);
       }
       return summarize(cached);
@@ -335,7 +340,7 @@ async function buildGemeente(g, crimeWindow, nl) {
     if (type === 'buurt') {
       const cr = crimeByBuurt.get(code);
       entity.veiligheid = cr ? {
-        per1000: kern.inwoners ? Math.round((cr.laatste12 / kern.inwoners) * 1000 * 10) / 10 : null,
+        per1000: robustPer1000(cr.perJaar, kern.inwoners),
         laatste12Maanden: cr.laatste12,
         trend: cr.perJaar,
         bron: 'Politie via CBS (tabel 47022NED)',
@@ -364,8 +369,7 @@ async function buildGemeente(g, crimeWindow, nl) {
   // buurtindeling tussen de politietabel en de kerncijfertabel, waardoor de
   // per-buurt-koppeling faalt; het gemeentetotaal blijft dan wel correct.
   const gmCrime = aggregateGemeenteCrime(crimeRows);
-  const gmCrimePer1000 = (gmCrime.total != null && gmKern.inwoners)
-    ? Math.round((gmCrime.total / gmKern.inwoners) * 1000 * 10) / 10 : null;
+  const gmCrimePer1000 = robustPer1000(gmCrime.perJaar, gmKern.inwoners);
 
   const record = {
     schemaVersion: SCHEMA_VERSION,
@@ -432,6 +436,17 @@ async function fetchCrimeYears(digits, years) {
       + '&$select=WijkenEnBuurten,Perioden,GeregistreerdeMisdrijven_1&$format=json'));
   }
   return rows;
+}
+
+// Robuuste misdaadmaat: gemiddeld aantal misdrijven per 1.000 inwoners per jaar
+// over de trendjaren. Voor kleine buurten is één jaar te ruizig (een toevallig
+// jaar met 0 misdrijven maakt de buurt onterecht "de veiligste"); het meerjarig
+// gemiddelde dempt dat. Null als er geen trend of inwonertal is.
+function robustPer1000(trend, inwoners) {
+  const years = Object.values(trend || {});
+  if (!years.length || !inwoners) return null;
+  const avg = years.reduce((a, b) => a + b, 0) / years.length;
+  return Math.round((avg / inwoners) * 1000 * 10) / 10;
 }
 
 function aggregateCrime(rows, years) {
