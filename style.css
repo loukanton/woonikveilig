@@ -1058,3 +1058,9 @@ h1.doc-h1 { font-size: clamp(1.9rem, 5.5vw, 3.2rem); line-height: 1.05; overflow
 /* Kleinere hero-kop voor de data-pagina's: "Leefbaarheid in X" bevat lange
    woorden die in de volle hero-maat lelijk mid-woord zouden breken. */
 h1.hero-h1 { font-size: clamp(1.9rem, 5.5vw, 3.1rem); max-width: none; line-height: 1.0; }
+
+/* Nadruk in lopende tekst en tabellen: groen voor gunstig, rood voor ongunstig
+   (de scorekleuren uit de huisstijl). Namen en kerncijfers zijn vet via <strong>. */
+.pos { color: #0a8a4a; font-weight: 800; }
+.neg { color: #d64545; font-weight: 800; }
+.doc-table .pos, .doc-table .neg { font-weight: 800; }

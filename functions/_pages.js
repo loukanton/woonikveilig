@@ -51,6 +51,25 @@ export function compare(value, ref, { higherIsWorse = false, tol = 0.05 } = {}) 
   };
 }
 
+// ---------- emphasis helpers ----------
+// Vet accent voor namen en kerncijfers, zodat ze opvallen in de lopende tekst.
+export const bold = (s) => `<strong>${s}</strong>`;
+// Gekleurde nadruk op een vergelijkingswoord: groen als gunstig, rood als
+// ongunstig, neutraal-vet bij 'vergelijkbaar'. Richting zit al in cmp.good
+// (voor misdaad is minder gunstig, voor gezondheid is meer gunstig).
+export function cw(cmp) {
+  if (!cmp || !cmp.word) return '';
+  if (cmp.dir === 0) return `<strong>${cmp.word}</strong>`;
+  return `<strong class="${cmp.good ? 'pos' : 'neg'}">${cmp.word}</strong>`;
+}
+// Kleur een waarde-cel in een tabel t.o.v. een referentie.
+export function colorCell(value, ref, opts, fmt) {
+  const txt = fmt(value);
+  const c = compare(value, ref, opts);
+  if (!c.word || c.dir === 0) return txt;
+  return `<span class="${c.good ? 'pos' : 'neg'}">${txt}</span>`;
+}
+
 // ---------- HTML shell ----------
 function head({ title, description, canonical, jsonLd }) {
   const ld = (jsonLd || []).map((o) => `<script type="application/ld+json">${JSON.stringify(o)}</script>`).join('\n  ');
@@ -267,62 +286,63 @@ ${footer()}
 }
 
 function buildGemeenteSummary(g, nl, crime, health) {
-  const name = escapeHtml(g.name);
+  const name = bold(escapeHtml(g.name));
   const d = g.demografie || {};
   const parts = [];
   // Zin 1: omvang + karakter
   const size = d.inwoners
     ? pick([
-        `${name} telt ${fmtInt(d.inwoners)} inwoners`,
-        `Met ${fmtInt(d.inwoners)} inwoners`,
-        `${name} heeft ${fmtInt(d.inwoners)} inwoners`,
+        `${name} telt ${bold(fmtInt(d.inwoners))} inwoners`,
+        `Met ${bold(fmtInt(d.inwoners))} inwoners`,
+        `${name} heeft ${bold(fmtInt(d.inwoners))} inwoners`,
       ], g.code + 'a')
     : name;
   const character = d.stedelijkheidLabel
-    ? ` en is ${d.stedelijkheidLabel}`
+    ? ` en is ${bold(d.stedelijkheidLabel)}`
     : '';
   parts.push(`${size}${character}.`);
   // Zin 2: veiligheid
   if (g.veiligheid?.per1000 != null && crime.word) {
     parts.push(pick([
-      `Er worden jaarlijks ${fmtNum(g.veiligheid.per1000)} misdrijven per 1.000 inwoners geregistreerd, ${crime.word} het landelijk gemiddelde van ${fmtNum(nl.veiligheid.per1000)}.`,
-      `Met ${fmtNum(g.veiligheid.per1000)} geregistreerde misdrijven per 1.000 inwoners ligt ${name} ${crime.word} het landelijk gemiddelde (${fmtNum(nl.veiligheid.per1000)}).`,
+      `Er worden jaarlijks ${bold(fmtNum(g.veiligheid.per1000))} misdrijven per 1.000 inwoners geregistreerd, ${cw(crime)} het landelijk gemiddelde van ${bold(fmtNum(nl.veiligheid.per1000))}.`,
+      `Met ${bold(fmtNum(g.veiligheid.per1000))} geregistreerde misdrijven per 1.000 inwoners ligt ${name} ${cw(crime)} het landelijk gemiddelde (${bold(fmtNum(nl.veiligheid.per1000))}).`,
     ], g.code + 'b'));
   }
   // Zin 3: gezondheid
   if (g.gezondheid?.goedErvarenGezondheid != null && health.word) {
     parts.push(pick([
-      `Het aandeel inwoners dat zich gezond voelt (${fmtPct(g.gezondheid.goedErvarenGezondheid)}) is ${health.word} het landelijk gemiddelde.`,
-      `${fmtPct(g.gezondheid.goedErvarenGezondheid)} van de inwoners ervaart de eigen gezondheid als goed, ${health.word} het landelijk beeld.`,
+      `Het aandeel inwoners dat zich gezond voelt (${bold(fmtPct(g.gezondheid.goedErvarenGezondheid))}) is ${cw(health)} het landelijk gemiddelde.`,
+      `${bold(fmtPct(g.gezondheid.goedErvarenGezondheid))} van de inwoners ervaart de eigen gezondheid als goed, ${cw(health)} het landelijk beeld.`,
     ], g.code + 'c'));
   }
   return parts.join(' ');
 }
 
 function buildCrimeText(g, nl, crime) {
-  const name = escapeHtml(g.name);
+  const name = bold(escapeHtml(g.name));
   if (g.veiligheid?.per1000 == null) return `Voor ${name} zijn geen misdaadcijfers per buurt beschikbaar.`;
   const trend = g.veiligheid.trend || {};
   const years = Object.keys(trend).sort();
   let trendText = '';
   if (years.length >= 2) {
     const first = trend[years[0]], last = trend[years.at(-1)];
-    const dir = last > first * 1.05 ? 'gestegen' : (last < first * 0.95 ? 'gedaald' : 'ongeveer gelijk gebleven');
+    const up = last > first * 1.05, down = last < first * 0.95;
+    const dir = up ? `<strong class="neg">gestegen</strong>` : (down ? `<strong class="pos">gedaald</strong>` : bold('ongeveer gelijk gebleven'));
     trendText = ` Tussen ${years[0]} en ${years.at(-1)} is het aantal geregistreerde misdrijven ${dir}.`;
   }
   const cmp = crime.word
-    ? `Dat is ${crime.word} het landelijk gemiddelde van ${fmtNum(nl.veiligheid.per1000)} per 1.000 inwoners.`
+    ? `Dat is ${cw(crime)} het landelijk gemiddelde van ${bold(fmtNum(nl.veiligheid.per1000))} per 1.000 inwoners.`
     : '';
-  return `In ${name} worden per jaar ongeveer ${fmtNum(g.veiligheid.per1000)} misdrijven per 1.000 inwoners geregistreerd. ${cmp}${trendText}`;
+  return `In ${name} worden per jaar ongeveer ${bold(fmtNum(g.veiligheid.per1000))} misdrijven per 1.000 inwoners geregistreerd. ${cmp}${trendText}`;
 }
 
 function buildHealthText(g, nl, health) {
-  const name = escapeHtml(g.name);
+  const name = bold(escapeHtml(g.name));
   if (g.gezondheid?.goedErvarenGezondheid == null) return `Voor ${name} zijn geen gezondheidscijfers per buurt beschikbaar.`;
   const cmp = health.word
-    ? `, ${health.word} het landelijk gemiddelde van ${fmtPct(nl.gezondheid.goedErvarenGezondheid)}`
+    ? `, ${cw(health)} het landelijk gemiddelde van ${bold(fmtPct(nl.gezondheid.goedErvarenGezondheid))}`
     : '';
-  return `In ${name} ervaart ${fmtPct(g.gezondheid.goedErvarenGezondheid)} van de inwoners van 18 jaar en ouder de eigen gezondheid als goed${cmp}.`;
+  return `In ${name} ervaart ${bold(fmtPct(g.gezondheid.goedErvarenGezondheid))} van de inwoners van 18 jaar en ouder de eigen gezondheid als goed${cmp}.`;
 }
 
 // Aanvullende gezondheidscijfers die we al verzamelen: sterfte en het aandeel
@@ -367,8 +387,9 @@ function kerncijferTable(d) {
 
 function vergelijkTable(g, nl) {
   const prov = g.provincie;
+  // De eigen waarde van de gemeente kleuren t.o.v. Nederland (groen = gunstig).
   const row = (label, gv, pv, nlv, fmt, higherIsWorse) => {
-    return `<tr><td>${label}</td><td class="num">${fmt(gv)}</td><td class="num">${fmt(pv)}</td><td class="num">${fmt(nlv)}</td></tr>`;
+    return `<tr><td>${label}</td><td class="num">${colorCell(gv, nlv, { higherIsWorse }, fmt)}</td><td class="num">${fmt(pv)}</td><td class="num">${fmt(nlv)}</td></tr>`;
   };
   return `<table class="doc-table">
     <thead><tr><th></th><th class="num">${escapeHtml(g.name)}</th><th class="num">Provincie ${escapeHtml(prov.name)}</th><th class="num">Nederland</th></tr></thead>
@@ -489,7 +510,7 @@ export function renderBuurtPage(b, g, nl) {
     ${b.gezondheid?.goedErvarenGezondheid != null ? `
     <section class="doc-section">
       <h2>Gezondheid in ${escapeHtml(name)}</h2>
-      <p>In ${escapeHtml(name)} ervaart ${fmtPct(b.gezondheid.goedErvarenGezondheid)} van de inwoners (18+) de eigen gezondheid als goed${healthVsNl.word ? `, ${healthVsNl.word} het landelijk gemiddelde van ${fmtPct(nl.gezondheid.goedErvarenGezondheid)}` : ''}.</p>
+      <p>In ${bold(escapeHtml(name))} ervaart ${bold(fmtPct(b.gezondheid.goedErvarenGezondheid))} van de inwoners (18+) de eigen gezondheid als goed${healthVsNl.word ? `, ${cw(healthVsNl)} het landelijk gemiddelde van ${bold(fmtPct(nl.gezondheid.goedErvarenGezondheid))}` : ''}.</p>
       <p class="doc-note">Modelschatting per buurt. Bron: RIVM Gezondheidsmonitor (tabel 50150NED).</p>
     </section>` : ''}
 
@@ -504,8 +525,8 @@ export function renderBuurtPage(b, g, nl) {
       <table class="doc-table">
         <thead><tr><th></th><th class="num">${escapeHtml(name)}</th><th class="num">${escapeHtml(g.name)}</th><th class="num">Nederland</th></tr></thead>
         <tbody>
-          <tr><td>Misdrijven per 1.000 inw.</td><td class="num">${fmtNum(b.veiligheid?.per1000)}</td><td class="num">${fmtNum(g.veiligheid?.per1000)}</td><td class="num">${fmtNum(nl.veiligheid?.per1000)}</td></tr>
-          <tr><td>Voelt zich gezond</td><td class="num">${fmtPct(b.gezondheid?.goedErvarenGezondheid)}</td><td class="num">${fmtPct(g.gezondheid?.goedErvarenGezondheid)}</td><td class="num">${fmtPct(nl.gezondheid?.goedErvarenGezondheid)}</td></tr>
+          <tr><td>Misdrijven per 1.000 inw.</td><td class="num">${colorCell(b.veiligheid?.per1000, nl.veiligheid?.per1000, { higherIsWorse: true }, fmtNum)}</td><td class="num">${fmtNum(g.veiligheid?.per1000)}</td><td class="num">${fmtNum(nl.veiligheid?.per1000)}</td></tr>
+          <tr><td>Voelt zich gezond</td><td class="num">${colorCell(b.gezondheid?.goedErvarenGezondheid, nl.gezondheid?.goedErvarenGezondheid, { higherIsWorse: false }, fmtPct)}</td><td class="num">${fmtPct(g.gezondheid?.goedErvarenGezondheid)}</td><td class="num">${fmtPct(nl.gezondheid?.goedErvarenGezondheid)}</td></tr>
         </tbody>
       </table>
     </section>
@@ -535,37 +556,38 @@ ${footer()}
 }
 
 function buildBuurtSummary(b, g, nl, crimeVsGem, healthVsNl) {
-  const name = escapeHtml(b.name);
+  const name = bold(escapeHtml(b.name));
   const d = b.demografie || {};
   const parts = [];
-  const size = d.inwoners ? `${name} is een buurt in ${escapeHtml(g.name)} met ${fmtInt(d.inwoners)} inwoners` : `${name} is een buurt in ${escapeHtml(g.name)}`;
+  const size = d.inwoners ? `${name} is een buurt in ${bold(escapeHtml(g.name))} met ${bold(fmtInt(d.inwoners))} inwoners` : `${name} is een buurt in ${bold(escapeHtml(g.name))}`;
   parts.push(`${size}.`);
   if (b.veiligheid?.per1000 != null && crimeVsGem.word) {
     parts.push(pick([
-      `Er worden ${fmtNum(b.veiligheid.per1000)} misdrijven per 1.000 inwoners per jaar geregistreerd, ${crimeVsGem.word} het gemeentegemiddelde van ${fmtNum(g.veiligheid.per1000)}.`,
-      `Met ${fmtNum(b.veiligheid.per1000)} geregistreerde misdrijven per 1.000 inwoners ligt de buurt ${crimeVsGem.word} het gemiddelde van ${escapeHtml(g.name)} (${fmtNum(g.veiligheid.per1000)}).`,
+      `Er worden ${bold(fmtNum(b.veiligheid.per1000))} misdrijven per 1.000 inwoners per jaar geregistreerd, ${cw(crimeVsGem)} het gemeentegemiddelde van ${bold(fmtNum(g.veiligheid.per1000))}.`,
+      `Met ${bold(fmtNum(b.veiligheid.per1000))} geregistreerde misdrijven per 1.000 inwoners ligt de buurt ${cw(crimeVsGem)} het gemiddelde van ${bold(escapeHtml(g.name))} (${bold(fmtNum(g.veiligheid.per1000))}).`,
     ], b.code));
   }
   if (b.gezondheid?.goedErvarenGezondheid != null && healthVsNl.word) {
-    parts.push(`${fmtPct(b.gezondheid.goedErvarenGezondheid)} van de inwoners voelt zich gezond, ${healthVsNl.word} het landelijk beeld.`);
+    parts.push(`${bold(fmtPct(b.gezondheid.goedErvarenGezondheid))} van de inwoners voelt zich gezond, ${cw(healthVsNl)} het landelijk beeld.`);
   }
   return parts.join(' ');
 }
 
 function buildBuurtCrimeText(b, g, nl, crimeVsGem, crimeVsNl) {
-  const name = escapeHtml(b.name);
+  const name = bold(escapeHtml(b.name));
   if (b.veiligheid?.per1000 == null) return `Voor ${name} zijn geen misdaadcijfers beschikbaar.`;
   const trend = b.veiligheid.trend || {};
   const years = Object.keys(trend).sort();
   let trendText = '';
   if (years.length >= 2) {
     const first = trend[years[0]], last = trend[years.at(-1)];
-    const dir = last > first * 1.05 ? 'gestegen' : (last < first * 0.95 ? 'gedaald' : 'ongeveer gelijk gebleven');
+    const up = last > first * 1.05, down = last < first * 0.95;
+    const dir = up ? `<strong class="neg">gestegen</strong>` : (down ? `<strong class="pos">gedaald</strong>` : bold('ongeveer gelijk gebleven'));
     trendText = ` Tussen ${years[0]} en ${years.at(-1)} is het aantal geregistreerde misdrijven ${dir}.`;
   }
-  const parts = [`In ${name} worden per jaar ongeveer ${fmtNum(b.veiligheid.per1000)} misdrijven per 1.000 inwoners geregistreerd.`];
-  if (crimeVsGem.word) parts.push(`Dat is ${crimeVsGem.word} het gemeentegemiddelde van ${escapeHtml(g.name)} (${fmtNum(g.veiligheid.per1000)})`);
-  if (crimeVsNl.word) parts.push(`en ${crimeVsNl.word} het landelijk gemiddelde van ${fmtNum(nl.veiligheid.per1000)}`);
+  const parts = [`In ${name} worden per jaar ongeveer ${bold(fmtNum(b.veiligheid.per1000))} misdrijven per 1.000 inwoners geregistreerd.`];
+  if (crimeVsGem.word) parts.push(`Dat is ${cw(crimeVsGem)} het gemeentegemiddelde van ${bold(escapeHtml(g.name))} (${bold(fmtNum(g.veiligheid.per1000))})`);
+  if (crimeVsNl.word) parts.push(`en ${cw(crimeVsNl)} het landelijk gemiddelde van ${bold(fmtNum(nl.veiligheid.per1000))}`);
   return parts.join(' ').replace(/\)\s+en /, ') en ') + '.' + trendText;
 }
 
@@ -597,9 +619,9 @@ export function renderProvinciePage(p, nl, allProvincies = []) {
   const crime = compare(p.veiligheid?.per1000, nl.veiligheid?.per1000, { higherIsWorse: true });
   const health = compare(p.gezondheid?.goedErvarenGezondheid, nl.gezondheid?.goedErvarenGezondheid);
 
-  const summaryParts = [`De provincie ${escapeHtml(name)} telt ${fmtInt(p.aantalGemeenten)} gemeenten en ${fmtInt(p.demografie?.inwoners)} inwoners.`];
-  if (crime.word) summaryParts.push(`Gemiddeld worden er ${fmtNum(p.veiligheid.per1000)} misdrijven per 1.000 inwoners geregistreerd, ${crime.word} het landelijk gemiddelde.`);
-  if (health.word) summaryParts.push(`${fmtPct(p.gezondheid.goedErvarenGezondheid)} van de inwoners voelt zich gezond, ${health.word} het landelijk beeld.`);
+  const summaryParts = [`De provincie ${bold(escapeHtml(name))} telt ${bold(fmtInt(p.aantalGemeenten))} gemeenten en ${bold(fmtInt(p.demografie?.inwoners))} inwoners.`];
+  if (crime.word) summaryParts.push(`Gemiddeld worden er ${bold(fmtNum(p.veiligheid.per1000))} misdrijven per 1.000 inwoners geregistreerd, ${cw(crime)} het landelijk gemiddelde.`);
+  if (health.word) summaryParts.push(`${bold(fmtPct(p.gezondheid.goedErvarenGezondheid))} van de inwoners voelt zich gezond, ${cw(health)} het landelijk beeld.`);
 
   const faq = [
     {
@@ -653,8 +675,8 @@ export function renderProvinciePage(p, nl, allProvincies = []) {
       <table class="doc-table">
         <thead><tr><th></th><th class="num">${escapeHtml(name)}</th><th class="num">Nederland</th></tr></thead>
         <tbody>
-          <tr><td>Misdrijven per 1.000 inw.</td><td class="num">${fmtNum(p.veiligheid?.per1000)}</td><td class="num">${fmtNum(nl.veiligheid?.per1000)}</td></tr>
-          <tr><td>Voelt zich gezond</td><td class="num">${fmtPct(p.gezondheid?.goedErvarenGezondheid)}</td><td class="num">${fmtPct(nl.gezondheid?.goedErvarenGezondheid)}</td></tr>
+          <tr><td>Misdrijven per 1.000 inw.</td><td class="num">${colorCell(p.veiligheid?.per1000, nl.veiligheid?.per1000, { higherIsWorse: true }, fmtNum)}</td><td class="num">${fmtNum(nl.veiligheid?.per1000)}</td></tr>
+          <tr><td>Voelt zich gezond</td><td class="num">${colorCell(p.gezondheid?.goedErvarenGezondheid, nl.gezondheid?.goedErvarenGezondheid, { higherIsWorse: false }, fmtPct)}</td><td class="num">${fmtPct(nl.gezondheid?.goedErvarenGezondheid)}</td></tr>
         </tbody>
       </table>
     </section>
@@ -667,8 +689,8 @@ export function renderProvinciePage(p, nl, allProvincies = []) {
           ${(p.gemeenten || []).map((gm) => `<tr>
             <td><a href="/gemeente/${gm.slug}">${escapeHtml(gm.name)}</a></td>
             <td class="num">${fmtInt(gm.inwoners)}</td>
-            <td class="num">${fmtNum(gm.veiligheidPer1000)}</td>
-            <td class="num">${fmtPct(gm.goedErvarenGezondheid)}</td>
+            <td class="num">${colorCell(gm.veiligheidPer1000, nl.veiligheid?.per1000, { higherIsWorse: true }, fmtNum)}</td>
+            <td class="num">${colorCell(gm.goedErvarenGezondheid, nl.gezondheid?.goedErvarenGezondheid, { higherIsWorse: false }, fmtPct)}</td>
           </tr>`).join('')}
         </tbody>
       </table>
