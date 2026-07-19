@@ -1080,3 +1080,29 @@ h1.hero-h1 { font-size: clamp(1.9rem, 5.5vw, 3.1rem); max-width: none; line-heig
 .ranking-table td.num, .ranking-table th.num { font-variant-numeric: tabular-nums; }
 .ranking-table a { text-decoration: none; font-weight: 700; }
 .ranking-table a:hover { text-decoration: underline; }
+
+/* ---------- Choropleth kaart ---------- */
+.map-figure { margin: 12px 0 0; }
+.map-figure svg {
+  display: block;
+  width: 100%;
+  max-width: 460px;
+  height: auto;
+  margin: 0 auto;
+}
+.map-figure svg a { cursor: pointer; }
+.map-figure svg path { transition: fill-opacity 0.12s ease-out; }
+.map-figure svg a:hover path { fill-opacity: 0.72; }
+.map-figure svg a:focus-visible path { outline: 2px solid var(--ink); }
+.map-legend-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 14px;
+  margin: 12px auto 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.map-key { display: inline-flex; align-items: center; gap: 5px; }
+.map-swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; border: 1px solid rgba(0,0,0,0.08); }
+.map-figure figcaption { margin-top: 10px; color: var(--muted); font-size: 0.85rem; text-align: center; text-wrap: pretty; }

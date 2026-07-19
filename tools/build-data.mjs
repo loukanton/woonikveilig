@@ -573,7 +573,12 @@ async function buildProvinces(built) {
         .sort((a, b) => a.name.localeCompare(b.name)),
     };
     await writeJson(join(DATA_DIR, 'provincie', `${prov.slug}.json`), record);
-    provinces.push({ code: prov.code, name: prov.name, slug: prov.slug, inwoners, aantalGemeenten: prov.gemeenten.length });
+    provinces.push({
+      code: prov.code, name: prov.name, slug: prov.slug, inwoners,
+      aantalGemeenten: prov.gemeenten.length,
+      veiligheidPer1000: record.veiligheid.per1000,
+      goedErvarenGezondheid: record.gezondheid.goedErvarenGezondheid,
+    });
   }
   return provinces.sort((a, b) => a.name.localeCompare(b.name));
 }

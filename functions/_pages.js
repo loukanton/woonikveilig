@@ -73,6 +73,48 @@ export function colorCell(value, ref, opts, fmt) {
   return `<span class="${c.good ? 'pos' : 'neg'}">${txt}</span>`;
 }
 
+// ---------- choropleth kaart ----------
+// Kleurschaal groen (gunstig) -> rood (ongunstig), t.o.v. een referentie.
+// goodness = hoe veel beter dan de referentie; richting via higherIsWorse.
+function rampColor(value, ref, higherIsWorse) {
+  if (value == null || ref == null || !ref) return '#e6e9ef'; // geen data
+  const goodness = higherIsWorse ? ref / value : value / ref;
+  if (goodness >= 1.3) return '#0a8a4a';
+  if (goodness >= 1.1) return '#5cb87f';
+  if (goodness >= 0.92) return '#e0a800';
+  if (goodness >= 0.75) return '#e07a1a';
+  return '#d64545';
+}
+
+const MAP_LEGEND = [
+  ['#0a8a4a', 'veel gunstiger'],
+  ['#5cb87f', 'gunstiger'],
+  ['#e0a800', 'rond gemiddeld'],
+  ['#e07a1a', 'ongunstiger'],
+  ['#d64545', 'veel ongunstiger'],
+  ['#e6e9ef', 'geen data'],
+];
+
+// geo: {viewBox, features:[{slug,naam,d,...}]}. opts.valueBySlug: slug->getal.
+export function renderMap(geo, opts) {
+  const { valueBySlug = {}, refValue, higherIsWorse = false, hrefBySlug, labelBySlug, activeSlug, caption } = opts;
+  const paths = geo.features.map((f) => {
+    const val = valueBySlug[f.slug];
+    const fill = activeSlug && f.slug === activeSlug ? '#f83898' : rampColor(val, refValue, higherIsWorse);
+    const active = activeSlug && f.slug === activeSlug;
+    const label = labelBySlug ? labelBySlug(f, val) : f.naam;
+    const p = `<path d="${f.d}" fill="${fill}" stroke="${active ? '#08304c' : '#ffffff'}" stroke-width="${active ? 2.5 : 0.7}" stroke-linejoin="round"><title>${escapeHtml(label)}</title></path>`;
+    const href = hrefBySlug ? hrefBySlug(f) : null;
+    return href ? `<a href="${href}">${p}</a>` : p;
+  }).join('');
+  const legend = MAP_LEGEND.map(([c, l]) => `<span class="map-key"><span class="map-swatch" style="background:${c}"></span>${l}</span>`).join('');
+  return `<figure class="map-figure">
+    <svg viewBox="${geo.viewBox}" role="img" aria-label="${escapeHtml(caption || 'Kaart van Nederland')}" preserveAspectRatio="xMidYMid meet">${paths}</svg>
+    <div class="map-legend-row">${legend}</div>
+    ${caption ? `<figcaption>${escapeHtml(caption)}</figcaption>` : ''}
+  </figure>`;
+}
+
 // ---------- HTML shell ----------
 function head({ title, description, canonical, jsonLd }) {
   const ld = (jsonLd || []).map((o) => `<script type="application/ld+json">${JSON.stringify(o)}</script>`).join('\n  ');
@@ -615,10 +657,18 @@ function buildBuurtFaq(b, g, nl, crimeVsGem) {
 
 // ---------- provincie page ----------
 // allProvincies: compacte lijst uit provincies.json (voor de interne nav).
-export function renderProvinciePage(p, nl, allProvincies = []) {
+export function renderProvinciePage(p, nl, allProvincies = [], geoProvincies = null) {
   const name = p.name;
   const provNav = allProvincies.filter((x) => x.slug !== p.slug)
     .map((x) => `<a class="doc-link" href="/provincie/${x.slug}">${escapeHtml(x.name)}</a>`).join('');
+  const mapBlock = geoProvincies ? renderMap(geoProvincies, {
+    valueBySlug: Object.fromEntries(allProvincies.map((x) => [x.slug, x.veiligheidPer1000])),
+    refValue: nl.veiligheid?.per1000, higherIsWorse: true,
+    hrefBySlug: (f) => `/provincie/${f.slug}`,
+    labelBySlug: (f, v) => `${f.naam}: ${v != null ? fmtNum(v) + ' misdrijven per 1.000' : 'geen data'}`,
+    activeSlug: p.slug,
+    caption: `${name} op de kaart van Nederland (kleur: misdrijven per 1.000 inwoners, groen is veiliger). Klik een provincie.`,
+  }) : '';
   const canonical = `${CANONICAL_ORIGIN}/provincie/${p.slug}`;
   const title = `Leefbaarheid in provincie ${name}: veiligheid en gezondheid per gemeente`;
   const description = `Hoe leefbaar is ${name}? Vergelijk veiligheid en gezondheid van alle ${p.aantalGemeenten} gemeenten uit open data van CBS, politie en RIVM.`;
@@ -670,6 +720,8 @@ export function renderProvinciePage(p, nl, allProvincies = []) {
     <section class="ai-overview" aria-label="Samenvatting">
       <p>${summaryParts.join(' ')}</p>
     </section>
+
+    ${mapBlock ? `<section class="doc-section"><h2>${escapeHtml(name)} op de kaart</h2>${mapBlock}</section>` : ''}
 
     <form class="search-bar" action="/" method="get" autocomplete="off">
       <input type="text" id="postcode-input" name="pc" placeholder="Postcode, bijv. 1234AB"
@@ -735,7 +787,7 @@ function safestGemeenteAnswer(p) {
 // kind: 'veiligste' (minste misdrijven) of 'gezondste' (meeste ervaren gezondheid).
 const RANKING_MIN_INWONERS = 2500; // kleine gemeenten schommelen te sterk
 
-export function renderRankingGemeenten(gemeenten, nl, kind) {
+export function renderRankingGemeenten(gemeenten, nl, kind, geoGemeenten = null) {
   const cfg = kind === 'gezondste'
     ? {
         h1a: 'Gezondste', h1b: 'gemeenten', thema: 'gezondheid',
@@ -783,6 +835,14 @@ export function renderRankingGemeenten(gemeenten, nl, kind) {
     },
   ];
 
+  const mapBlock = geoGemeenten ? renderMap(geoGemeenten, {
+    valueBySlug: Object.fromEntries(gemeenten.filter((g) => g[cfg.metric] != null).map((g) => [g.slug, g[cfg.metric]])),
+    refValue: cfg.nlVal, higherIsWorse: cfg.higherIsWorse,
+    hrefBySlug: (f) => `/gemeente/${f.slug}`,
+    labelBySlug: (f, v) => `${f.naam}: ${v != null ? cfg.fmt(v) : 'geen data'}`,
+    caption: `Elke gemeente ingekleurd naar ${cfg.colLabel.toLowerCase()} (groen is ${kind === 'gezondste' ? 'gezonder' : 'veiliger'}). Klik een gemeente voor de cijfers.`,
+  }) : '';
+
   const rows = ranked.map((g, i) => `<tr>
     <td class="rank">${i + 1}</td>
     <td><a href="/gemeente/${g.slug}">${escapeHtml(g.name)}</a></td>
@@ -805,6 +865,8 @@ export function renderRankingGemeenten(gemeenten, nl, kind) {
     ${breadcrumb([{ name: 'Nederland', href: '/' }, { name: `${cfg.h1a} gemeenten` }])}
 
     <section class="ai-overview" aria-label="Samenvatting"><p>${summary}</p></section>
+
+    ${mapBlock ? `<section class="doc-section"><h2>Kaart van Nederland</h2>${mapBlock}</section>` : ''}
 
     <section class="doc-section">
       <h2>Ranglijst</h2>
