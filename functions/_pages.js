@@ -118,8 +118,9 @@ export function renderMap(geo, opts) {
     return MAP_SCALE[Math.max(0, Math.min(4, idx))];
   };
   const paths = geo.features.map((f) => {
-    const val = valueBySlug[f.slug];
-    const active = activeSlug && f.slug === activeSlug;
+    const key = f.code ?? f.slug; // buurtkaart keyt op code, gebieds-kaart op slug
+    const val = valueBySlug[key];
+    const active = activeSlug && key === activeSlug;
     const fill = active ? '#f83898' : colorFor(val);
     const label = labelBySlug ? labelBySlug(f, val) : f.naam;
     const p = `<path d="${f.d}" fill="${fill}" stroke="${active ? '#08304c' : '#ffffff'}" stroke-width="${active ? 2.5 : 0.7}" stroke-linejoin="round"><title>${escapeHtml(label)}</title></path>`;
@@ -243,7 +244,8 @@ function trendChart(trend, { label, color = '#f83898' } = {}) {
 
 // ---------- gemeente page ----------
 // provRecord: het volledige provinciebestand (voor vergelijking + zustergemeenten).
-export function renderGemeentePage(g, nl, provRecord) {
+// geoBuurt: {viewBox, features:[{code,naam,d}]} voor de ingezoomde buurtkaart.
+export function renderGemeentePage(g, nl, provRecord, geoBuurt) {
   const name = g.name;
   const prov = g.provincie;
   const d = g.demografie || {};
@@ -346,6 +348,7 @@ ${topbar()}
     <section class="doc-section">
       <h2>Buurten in ${escapeHtml(name)}</h2>
       <p>${escapeHtml(name)} telt ${fmtInt(g.buurten.length)} buurten. Zoek een buurt of bekijk de veiligste hieronder; klik door voor de cijfers per buurt.</p>
+      ${buurtMap(g, geoBuurt)}
       ${buurtHighlights(g)}
       ${buurtBrowser(g)}
     </section>` : ''}
@@ -476,13 +479,13 @@ function vergelijkTable(g, nl) {
   const row = (label, gv, pv, nlv, fmt, higherIsWorse) => {
     return `<tr><td>${label}</td><td class="num">${colorCell(gv, nlv, { higherIsWorse }, fmt)}</td><td class="num">${fmt(pv)}</td><td class="num">${fmt(nlv)}</td></tr>`;
   };
-  return `<table class="doc-table">
+  return `<div class="table-scroll"><table class="doc-table">
     <thead><tr><th></th><th class="num">${escapeHtml(g.name)}</th><th class="num">Provincie ${escapeHtml(prov.name)}</th><th class="num">Nederland</th></tr></thead>
     <tbody>
       ${row('Misdrijven per 1.000 inw.', g.veiligheid?.per1000, g._provVeiligheid, nl.veiligheid?.per1000, fmtNum, true)}
       ${row('Voelt zich gezond', g.gezondheid?.goedErvarenGezondheid, g._provGezondheid, nl.gezondheid?.goedErvarenGezondheid, fmtPct, false)}
     </tbody>
-  </table>
+  </table></div>
   <p class="doc-note">Provinciecijfers zijn naar inwonertal gewogen gemiddelden.</p>`;
 }
 
@@ -496,6 +499,29 @@ function buurtHighlights(g) {
   if (!scored.length) return '';
   const items = scored.map((b) => `<li><a href="/gemeente/${g.slug}/${b.slug}">${escapeHtml(b.name)}</a>: ${fmtNum(b.veiligheid.per1000)} misdrijven per 1.000 inwoners</li>`).join('');
   return `<p style="margin-top:18px;">Buurten met de minste geregistreerde misdrijven per 1.000 inwoners:</p><ul class="doc-list">${items}</ul>`;
+}
+
+// Ingezoomde buurtkaart van de gemeente, ingekleurd naar veiligheid (kwintielen
+// binnen de gemeente). Buurten met een pagina zijn klikbaar.
+function buurtMap(g, geoBuurt) {
+  if (!geoBuurt?.features?.length) return '';
+  const byCode = new Map((g.buurten || []).map((b) => [b.code, b]));
+  const valueBySlug = {};
+  for (const [code, b] of byCode) if (b.veiligheid?.per1000 != null) valueBySlug[code] = b.veiligheid.per1000;
+  if (Object.keys(valueBySlug).length < 5) return ''; // te weinig data voor kleur
+  const hasPage = (b) => b && (b.demografie?.inwoners || 0) >= 200 && b.veiligheid?.per1000 != null;
+  const map = renderMap(geoBuurt, {
+    valueBySlug,
+    higherIsWorse: true,
+    hrefBySlug: (f) => (hasPage(byCode.get(f.code)) ? `/gemeente/${g.slug}/${byCode.get(f.code).slug}` : null),
+    labelBySlug: (f) => {
+      const b = byCode.get(f.code);
+      const v = b?.veiligheid?.per1000;
+      return `${f.naam}: ${v != null ? fmtNum(v) + ' misdrijven per 1.000' : 'geen data'}`;
+    },
+    caption: `Buurten van ${g.name} naar rangorde in misdrijven per 1.000 inwoners (groen = veiligst binnen de gemeente). Klik een buurt.`,
+  });
+  return map;
 }
 
 // Doorzoekbare lijst van alle buurten in de gemeente. Buurten die de
@@ -632,13 +658,13 @@ ${topbar()}
 
     <section class="doc-section">
       <h2>${escapeHtml(name)} vergeleken</h2>
-      <table class="doc-table">
+      <div class="table-scroll"><table class="doc-table">
         <thead><tr><th></th><th class="num">${escapeHtml(name)}</th><th class="num">${escapeHtml(g.name)}</th><th class="num">Nederland</th></tr></thead>
         <tbody>
           <tr><td>Misdrijven per 1.000 inw.</td><td class="num">${colorCell(b.veiligheid?.per1000, nl.veiligheid?.per1000, { higherIsWorse: true }, fmtNum)}</td><td class="num">${fmtNum(g.veiligheid?.per1000)}</td><td class="num">${fmtNum(nl.veiligheid?.per1000)}</td></tr>
           <tr><td>Voelt zich gezond</td><td class="num">${colorCell(b.gezondheid?.goedErvarenGezondheid, nl.gezondheid?.goedErvarenGezondheid, { higherIsWorse: false }, fmtPct)}</td><td class="num">${fmtPct(g.gezondheid?.goedErvarenGezondheid)}</td><td class="num">${fmtPct(nl.gezondheid?.goedErvarenGezondheid)}</td></tr>
         </tbody>
-      </table>
+      </table></div>
     </section>
 
     ${renderFaq(faq)}

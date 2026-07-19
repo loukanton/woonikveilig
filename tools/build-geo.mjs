@@ -8,7 +8,7 @@
 //
 // Usage: node tools/build-geo.mjs            (both)
 //        node tools/build-geo.mjs --provincies-only
-import { writeFile } from 'node:fs/promises';
+import { writeFile, mkdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -163,6 +163,47 @@ async function build() {
   await writeFile(join(DATA_DIR, 'geo-gemeenten.json'),
     JSON.stringify({ schemaVersion: 1, viewBox, features: gemeenten }), 'utf8');
   console.log(`  ${gemeenten.length} gemeenten -> geo-gemeenten.json`);
+
+  await buildBuurtMaps();
+}
+
+// Ingezoomde buurtkaart per gemeente: één bestand per gemeente met een eigen
+// viewBox (op de gemeente gezoomd) en de buurten als SVG-paden, gekeyd op
+// buurtcode. De gemeentepagina laadt alleen haar eigen bestand.
+async function buildBuurtMaps() {
+  console.log('Buurtgeometrie ophalen (kan even duren)…');
+  const feats = await fetchLayer('gebiedsindelingen:buurt_gegeneraliseerd', 'statnaam,statcode');
+  const byGm = new Map();
+  for (const f of feats) {
+    const code = f.properties.statcode; // BU + 4 gemeente + 4 buurt
+    const gm = `GM${code.slice(2, 6)}`;
+    if (!byGm.has(gm)) byGm.set(gm, []);
+    byGm.get(gm).push(f);
+  }
+  const dir = join(DATA_DIR, 'geo-buurt');
+  await mkdir(dir, { recursive: true });
+  let n = 0;
+  for (const [gm, list] of byGm) {
+    const bb = computeBbox(list);
+    const w = bb.maxX - bb.minX, h = bb.maxY - bb.minY;
+    if (!(w > 0 && h > 0)) continue;
+    const TW = 600;
+    const scale = TW / w;
+    const H = Math.round(h * scale);
+    const project = (x, y) => [
+      Math.round((x - bb.minX) * scale),
+      Math.round((bb.maxY - y) * scale),
+    ];
+    const features = list.map((f) => ({
+      code: f.properties.statcode,
+      naam: f.properties.statnaam,
+      d: featureToPath(f.geometry, 60, project, 1e4),
+    })).filter((x) => x.d);
+    await writeFile(join(dir, `${gm}.json`),
+      JSON.stringify({ schemaVersion: 1, viewBox: `0 0 ${TW} ${H}`, features }), 'utf8');
+    n++;
+  }
+  console.log(`  ${n} gemeenten -> geo-buurt/`);
 }
 
 build().catch((e) => { console.error(e); process.exit(1); });
