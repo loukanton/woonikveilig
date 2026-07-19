@@ -59,7 +59,38 @@ Eén score van 1–10, opgebouwd uit deelscores (lucht, geluid, verkeer, veiligh
 - `app.js` — datalogica en rendering (ES module)
 - `style.css` — styling
 - `fonts/` — lokale woff2-bestanden (Archivo Black, Plus Jakarta Sans)
+- `methode.html`, `bronnen.html`, `over.html`, `pers.html` — statische EEAT-pagina's (fase 0 programmatic SEO)
+- `functions/` — Cloudflare Pages Functions (zie hierboven); `_datasets.js` + `dataset/[bron].js` renderen `/dataset/:bron`
+- `SEO-PLAN.md` — architectuurontwerp voor de programmatic-SEO-opschaling (niet gedeployd)
+- `tools/build-data.mjs` — offline snapshot-builder (fase 1, zie hieronder); niet gedeployd
+- `data/` — statische JSON-snapshot, gedeployd als asset én de publieke API v0
 - Geen mappenstructuur tot het project daar echt om vraagt.
+
+## Programmatic SEO en de datalaag
+
+Het ontwerp voor het opschalen naar provincie-, gemeente-, plaats- en
+buurtpagina's staat in `SEO-PLAN.md`. Fasering en principes daar; hier alleen
+de harde technische feiten.
+
+- **`tools/build-data.mjs`** draait offline op Node 18+ (`node tools/build-data.mjs`),
+  haalt de bulk-beschikbare open data op (CBS-gebiedsindeling 85755NED,
+  kerncijfers wijken/buurten 85984NED, misdrijven 47022NED, Gezondheidsmonitor
+  50150NED, sterfte 70072ned, doodsoorzaken 80142ned) en schrijft statische
+  JSON naar `data/`. De leefscore wordt hier nooit berekend; alleen ruwe
+  datablokken. Resumebaar (slaat bestaande gemeentebestanden over, tenzij
+  `--force`). Flags: `--province`, `--gemeente GMxxxx`, `--limit N`, `--force`.
+  Bulk-truc: CBS-tabellen filteren op `startswith(WijkenEnBuurten,'BU<gm-cijfers>')`,
+  dus één call per dataset per gemeente. Let op: de gezondheidstabel padt codes
+  (exact `eq` faalt, gebruik `startswith`); NL-gezondheid staat onder `NL01`,
+  NL-demografie onder `NL00`.
+- **`data/`-indeling**: `index.json` (alle entiteiten voor routing/sitemaps/links),
+  `nl.json`, `provincie/<slug>.json`, `gemeente/<GMcode>.json` (mét al haar
+  wijken en buurten in één bestand, want Pages heeft een limiet van 20.000
+  bestanden per deploy). Elk bestand heeft `schemaVersion` en `peildatum`.
+  Ontbrekende data is `null` ("geen data"), nooit een neutrale invulling.
+- **`data/` is meteen de publieke API v0**: gedeployd als statisch asset (via
+  `deploy.sh`), niet achter een functie, dus op het gratis asset-pad.
+  Verversing: per kwartaal `build-data.mjs` draaien, diff bekijken, deployen.
 
 ## Design
 
