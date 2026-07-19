@@ -265,13 +265,10 @@ async function buildGemeente(g, crimeWindow, nl) {
       const cached = JSON.parse(await readFile(file, 'utf8'));
       if (OPT.reprocess) {
         // Transformaties opnieuw toepassen op de cache, zonder de API's te
-        // bevragen: dedup slugs en de per1000 herrekenen als robuust meerjarig
-        // gemiddelde uit de opgeslagen trend.
+        // bevragen: dedup slugs en de misdaadmaat normaliseren.
         dedupeSlugs(cached.buurten || []);
-        for (const b of (cached.buurten || [])) {
-          if (b.veiligheid) b.veiligheid.per1000 = robustPer1000(b.veiligheid.trend, b.demografie?.inwoners);
-        }
         if (cached.veiligheid) cached.veiligheid.per1000 = robustPer1000(cached.veiligheid.trend, cached.demografie?.inwoners);
+        normalizeBuurtCrime(cached);
         await writeJson(file, cached);
       }
       return summarize(cached);
@@ -402,6 +399,7 @@ async function buildGemeente(g, crimeWindow, nl) {
     buurten: buurten.sort((a, b) => a.name.localeCompare(b.name)),
   };
 
+  normalizeBuurtCrime(record); // buurt-misdaad op "geen data" bij afwijkende indeling
   await writeJson(file, record);
   return summarize(record);
 }
@@ -447,6 +445,22 @@ function robustPer1000(trend, inwoners) {
   if (!years.length || !inwoners) return null;
   const avg = years.reduce((a, b) => a + b, 0) / years.length;
   return Math.round((avg / inwoners) * 1000 * 10) / 10;
+}
+
+// Zet de buurt-per1000 op het robuuste meerjarig gemiddelde. Maar als de som
+// van de buurtmisdrijven ver onder het (uit ruwe rijen berekende) gemeente-
+// totaal ligt, gebruiken de politie- en kerncijfertabel een andere buurt-
+// indeling (bijv. Best, Voorst, Zoetermeer): de buurtcijfers zijn dan te laag
+// en misleidend. In dat geval zetten we de buurt-misdaad op "geen data" (null);
+// het gemeentetotaal blijft wel correct. Retourneert of de koppeling betrouwbaar is.
+function normalizeBuurtCrime(rec) {
+  const gmTot = rec.veiligheid?.laatste12Maanden || 0;
+  const sumB = (rec.buurten || []).reduce((s, b) => s + (b.veiligheid?.laatste12Maanden || 0), 0);
+  const reliable = gmTot > 0 ? sumB >= gmTot * 0.9 : true;
+  for (const b of (rec.buurten || [])) {
+    if (b.veiligheid) b.veiligheid.per1000 = reliable ? robustPer1000(b.veiligheid.trend, b.demografie?.inwoners) : null;
+  }
+  return reliable;
 }
 
 function aggregateCrime(rows, years) {
