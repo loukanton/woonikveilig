@@ -312,7 +312,46 @@ if (sharedPostcode) {
 
 async function lookup(query) {
   if (!query) return;
+  // Gemeente of dorp ingetypt? Naar de overzichtspagina (algemene info + buurten
+  // zoeken). Postcode, adres of straat: het gewone buurtrapport hieronder.
+  const compact = query.replace(/\s+/g, '').toUpperCase();
+  const isPostcode = /^[1-9][0-9]{3}[A-Z]{2}$/.test(compact);
+  const hasNumber = /\d/.test(query);
+  if (!isPostcode && !hasNumber) {
+    const slug = await resolveGemeenteSlug(query);
+    if (slug) { window.location.href = `/gemeente/${slug}`; return; }
+  }
   await performLookup(() => geocode(query));
+}
+
+// Matcht de invoer op een gemeente of woonplaats (PDOK) en vertaalt die naar de
+// slug van onze gemeentepagina. Alleen bij een schone naam-match, zodat een
+// adres met een plaatsnaam erin niet per ongeluk naar het overzicht springt.
+let gemeenteIndexCache = null;
+async function resolveGemeenteSlug(query) {
+  try {
+    const params = new URLSearchParams({
+      q: query,
+      fq: 'type:(gemeente OR woonplaats)',
+      rows: '1',
+      fl: 'weergavenaam,type,gemeentecode,gemeentenaam,woonplaatsnaam',
+    });
+    const doc = (await fetchJson(`${PDOK_URL}?${params}`)).response?.docs?.[0];
+    if (!doc?.gemeentecode) return null;
+    const norm = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const q = norm(query);
+    const names = [doc.weergavenaam, doc.gemeentenaam, doc.woonplaatsnaam].map(norm);
+    if (!names.includes(q)) return null; // geen schone match (bijv. straat + plaats)
+    // PDOK geeft de gemeentecode zonder "GM"-prefix (bijv. "0865"); onze data
+    // gebruikt "GM0865".
+    const code = doc.gemeentecode.startsWith('GM') ? doc.gemeentecode : `GM${doc.gemeentecode}`;
+    if (!gemeenteIndexCache) {
+      gemeenteIndexCache = (await fetchJson('/data/gemeenten.json')).gemeenten || [];
+    }
+    return gemeenteIndexCache.find((g) => g.code === code)?.slug ?? null;
+  } catch {
+    return null; // bij twijfel gewoon het rapport tonen
+  }
 }
 
 // Rapport voor een CBS-buurt, bijvoorbeeld aangeklikt in de ranglijst

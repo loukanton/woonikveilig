@@ -342,8 +342,9 @@ ${topbar()}
     ${g.buurten?.length ? `
     <section class="doc-section">
       <h2>Buurten in ${escapeHtml(name)}</h2>
-      <p>${escapeHtml(name)} telt ${fmtInt(g.buurten.length)} buurten. Check per postcode de leefscore van een specifieke buurt.</p>
+      <p>${escapeHtml(name)} telt ${fmtInt(g.buurten.length)} buurten. Zoek een buurt of bekijk de veiligste hieronder; klik door voor de cijfers per buurt.</p>
       ${buurtHighlights(g)}
+      ${buurtBrowser(g)}
     </section>` : ''}
 
     ${renderFaq(faq)}
@@ -451,6 +452,7 @@ function kerncijferTable(d) {
     ['Stedelijkheid', d.stedelijkheidLabel || 'geen data'],
     ['Inwoners tot 15 jaar', pctOf(d.inwoners0tot15)],
     ['Inwoners 65 jaar en ouder', pctOf(d.inwoners65plus)],
+    ['Aantal huishoudens', fmtInt(d.huishoudens)],
     ['Gemiddelde huishoudensgrootte', d.huishoudensgrootte != null ? fmtNum(d.huishoudensgrootte) : 'geen data'],
     ['Gemiddelde WOZ-waarde', fmtEuro(d.wozWaarde)],
     ['Koopwoningen', fmtPct(d.koopwoningen)],
@@ -490,7 +492,31 @@ function buurtHighlights(g) {
     .slice(0, 8);
   if (!scored.length) return '';
   const items = scored.map((b) => `<li><a href="/gemeente/${g.slug}/${b.slug}">${escapeHtml(b.name)}</a>: ${fmtNum(b.veiligheid.per1000)} misdrijven per 1.000 inwoners</li>`).join('');
-  return `<p>Buurten met de minste geregistreerde misdrijven per 1.000 inwoners:</p><ul class="doc-list">${items}</ul>`;
+  return `<p style="margin-top:18px;">Buurten met de minste geregistreerde misdrijven per 1.000 inwoners:</p><ul class="doc-list">${items}</ul>`;
+}
+
+// Doorzoekbare lijst van alle buurten in de gemeente. Buurten die de
+// kwaliteitsdrempel halen linken naar hun eigen pagina; kleine buurten zonder
+// pagina staan er wel bij (grijs), zodat het overzicht compleet is. Het
+// filterscript is progressive enhancement: zonder JS toont de volle lijst.
+function buurtBrowser(g) {
+  const buurten = (g.buurten || []).slice().sort((a, b) => a.name.localeCompare(b.name));
+  if (!buurten.length) return '';
+  const hasPage = (b) => (b.demografie?.inwoners || 0) >= 200 && b.veiligheid?.per1000 != null;
+  const items = buurten.map((b) => {
+    const key = escapeHtml(b.name.toLowerCase());
+    const nm = escapeHtml(b.name);
+    return hasPage(b)
+      ? `<li data-n="${key}"><a href="/gemeente/${g.slug}/${b.slug}">${nm}</a></li>`
+      : `<li data-n="${key}" class="buurt-nolink">${nm}</li>`;
+  }).join('');
+  return `
+    <div class="buurt-browser">
+      <input type="search" id="buurt-filter" class="buurt-filter" placeholder="Zoek een buurt in ${escapeHtml(g.name)}…" autocomplete="off" aria-label="Zoek een buurt in ${escapeHtml(g.name)}">
+      <ul class="buurt-list" id="buurt-list">${items}</ul>
+      <p class="doc-note" id="buurt-none" hidden>Geen buurt met die naam gevonden.</p>
+    </div>
+    <script>(function(){var i=document.getElementById('buurt-filter'),l=document.getElementById('buurt-list'),n=document.getElementById('buurt-none');if(!i)return;i.addEventListener('input',function(){var q=i.value.trim().toLowerCase(),any=false;l.querySelectorAll('li').forEach(function(li){var m=!q||li.getAttribute('data-n').indexOf(q)>-1;li.hidden=!m;if(m)any=true;});n.hidden=any;});})();</script>`;
 }
 
 function buildGemeenteFaq(g, nl, crime, health) {
