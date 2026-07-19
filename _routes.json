@@ -11,6 +11,9 @@
     "/dataset/*",
     "/gemeente/*",
     "/provincie/*",
+    "/veiligste-gemeenten",
+    "/gezondste-gemeenten",
+    "/onderzoek/*",
     "/sitemap.xml",
     "/sitemaps/*"
   ],

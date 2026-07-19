@@ -54,6 +54,9 @@ export function compare(value, ref, { higherIsWorse = false, tol = 0.05 } = {}) 
 // ---------- emphasis helpers ----------
 // Vet accent voor namen en kerncijfers, zodat ze opvallen in de lopende tekst.
 export const bold = (s) => `<strong>${s}</strong>`;
+// Themawoord (misdaad, veiligheid, gezondheid ...) vet in de lopende tekst,
+// zodat meteen zichtbaar is waar een zin over gaat.
+export const theme = (s) => `<strong class="theme">${s}</strong>`;
 // Gekleurde nadruk op een vergelijkingswoord: groen als gunstig, rood als
 // ongunstig, neutraal-vet bij 'vergelijkbaar'. Richting zit al in cmp.good
 // (voor misdaad is minder gunstig, voor gezondheid is meer gunstig).
@@ -99,6 +102,10 @@ function footer() {
     <a class="masthead footer-mark" href="https://brighthouse.consulting/" target="_blank" rel="noopener" aria-label="BrightHouse Consulting">Bright<span class="mh-house">House</span><span class="mh-dot"></span></a>
     <p>Een initiatief van <strong>BrightHouse Consulting</strong>. Vragen of een fout gezien? Mail <a href="mailto:media@brighthouse.consulting">media@brighthouse.consulting</a>.</p>
     <p>Geen cookies. Alle data komt live uit open bronnen; aan de leefscore kunnen geen rechten worden ontleend.</p>
+    <nav class="footer-cities" aria-label="Ranglijsten">
+      <span>Ranglijsten:</span>
+      <a href="/veiligste-gemeenten">Veiligste gemeenten</a><a href="/gezondste-gemeenten">Gezondste gemeenten</a><a href="/onderzoek/veiligste-buurten-2026">Veiligste buurten 2026</a>
+    </nav>
     <nav class="footer-cities" aria-label="Over deze site">
       <span>Over deze site:</span>
       <a href="/methode">Methode</a><a href="/bronnen">Bronnen</a><a href="/over">Over</a><a href="/pers">Pers</a>
@@ -304,15 +311,15 @@ function buildGemeenteSummary(g, nl, crime, health) {
   // Zin 2: veiligheid
   if (g.veiligheid?.per1000 != null && crime.word) {
     parts.push(pick([
-      `Er worden jaarlijks ${bold(fmtNum(g.veiligheid.per1000))} misdrijven per 1.000 inwoners geregistreerd, ${cw(crime)} het landelijk gemiddelde van ${bold(fmtNum(nl.veiligheid.per1000))}.`,
-      `Met ${bold(fmtNum(g.veiligheid.per1000))} geregistreerde misdrijven per 1.000 inwoners ligt ${name} ${cw(crime)} het landelijk gemiddelde (${bold(fmtNum(nl.veiligheid.per1000))}).`,
+      `Er worden jaarlijks ${bold(fmtNum(g.veiligheid.per1000))} ${theme('misdrijven')} per 1.000 inwoners geregistreerd, ${cw(crime)} het landelijk gemiddelde van ${bold(fmtNum(nl.veiligheid.per1000))}.`,
+      `Met ${bold(fmtNum(g.veiligheid.per1000))} geregistreerde ${theme('misdrijven')} per 1.000 inwoners ligt ${name} ${cw(crime)} het landelijk gemiddelde (${bold(fmtNum(nl.veiligheid.per1000))}).`,
     ], g.code + 'b'));
   }
   // Zin 3: gezondheid
   if (g.gezondheid?.goedErvarenGezondheid != null && health.word) {
     parts.push(pick([
-      `Het aandeel inwoners dat zich gezond voelt (${bold(fmtPct(g.gezondheid.goedErvarenGezondheid))}) is ${cw(health)} het landelijk gemiddelde.`,
-      `${bold(fmtPct(g.gezondheid.goedErvarenGezondheid))} van de inwoners ervaart de eigen gezondheid als goed, ${cw(health)} het landelijk beeld.`,
+      `Het aandeel inwoners dat zich ${theme('gezond')} voelt (${bold(fmtPct(g.gezondheid.goedErvarenGezondheid))}) is ${cw(health)} het landelijk gemiddelde.`,
+      `${bold(fmtPct(g.gezondheid.goedErvarenGezondheid))} van de inwoners ervaart de eigen ${theme('gezondheid')} als goed, ${cw(health)} het landelijk beeld.`,
     ], g.code + 'c'));
   }
   return parts.join(' ');
@@ -333,7 +340,7 @@ function buildCrimeText(g, nl, crime) {
   const cmp = crime.word
     ? `Dat is ${cw(crime)} het landelijk gemiddelde van ${bold(fmtNum(nl.veiligheid.per1000))} per 1.000 inwoners.`
     : '';
-  return `In ${name} worden per jaar ongeveer ${bold(fmtNum(g.veiligheid.per1000))} misdrijven per 1.000 inwoners geregistreerd. ${cmp}${trendText}`;
+  return `In ${name} worden per jaar ongeveer ${bold(fmtNum(g.veiligheid.per1000))} ${theme('misdrijven')} per 1.000 inwoners geregistreerd. ${cmp}${trendText}`;
 }
 
 function buildHealthText(g, nl, health) {
@@ -342,7 +349,7 @@ function buildHealthText(g, nl, health) {
   const cmp = health.word
     ? `, ${cw(health)} het landelijk gemiddelde van ${bold(fmtPct(nl.gezondheid.goedErvarenGezondheid))}`
     : '';
-  return `In ${name} ervaart ${bold(fmtPct(g.gezondheid.goedErvarenGezondheid))} van de inwoners van 18 jaar en ouder de eigen gezondheid als goed${cmp}.`;
+  return `In ${name} ervaart ${bold(fmtPct(g.gezondheid.goedErvarenGezondheid))} van de inwoners van 18 jaar en ouder de eigen ${theme('gezondheid')} als goed${cmp}.`;
 }
 
 // Aanvullende gezondheidscijfers die we al verzamelen: sterfte en het aandeel
@@ -510,7 +517,7 @@ export function renderBuurtPage(b, g, nl) {
     ${b.gezondheid?.goedErvarenGezondheid != null ? `
     <section class="doc-section">
       <h2>Gezondheid in ${escapeHtml(name)}</h2>
-      <p>In ${bold(escapeHtml(name))} ervaart ${bold(fmtPct(b.gezondheid.goedErvarenGezondheid))} van de inwoners (18+) de eigen gezondheid als goed${healthVsNl.word ? `, ${cw(healthVsNl)} het landelijk gemiddelde van ${bold(fmtPct(nl.gezondheid.goedErvarenGezondheid))}` : ''}.</p>
+      <p>In ${bold(escapeHtml(name))} ervaart ${bold(fmtPct(b.gezondheid.goedErvarenGezondheid))} van de inwoners (18+) de eigen ${theme('gezondheid')} als goed${healthVsNl.word ? `, ${cw(healthVsNl)} het landelijk gemiddelde van ${bold(fmtPct(nl.gezondheid.goedErvarenGezondheid))}` : ''}.</p>
       <p class="doc-note">Modelschatting per buurt. Bron: RIVM Gezondheidsmonitor (tabel 50150NED).</p>
     </section>` : ''}
 
@@ -563,12 +570,12 @@ function buildBuurtSummary(b, g, nl, crimeVsGem, healthVsNl) {
   parts.push(`${size}.`);
   if (b.veiligheid?.per1000 != null && crimeVsGem.word) {
     parts.push(pick([
-      `Er worden ${bold(fmtNum(b.veiligheid.per1000))} misdrijven per 1.000 inwoners per jaar geregistreerd, ${cw(crimeVsGem)} het gemeentegemiddelde van ${bold(fmtNum(g.veiligheid.per1000))}.`,
-      `Met ${bold(fmtNum(b.veiligheid.per1000))} geregistreerde misdrijven per 1.000 inwoners ligt de buurt ${cw(crimeVsGem)} het gemiddelde van ${bold(escapeHtml(g.name))} (${bold(fmtNum(g.veiligheid.per1000))}).`,
+      `Er worden ${bold(fmtNum(b.veiligheid.per1000))} ${theme('misdrijven')} per 1.000 inwoners per jaar geregistreerd, ${cw(crimeVsGem)} het gemeentegemiddelde van ${bold(fmtNum(g.veiligheid.per1000))}.`,
+      `Met ${bold(fmtNum(b.veiligheid.per1000))} geregistreerde ${theme('misdrijven')} per 1.000 inwoners ligt de buurt ${cw(crimeVsGem)} het gemiddelde van ${bold(escapeHtml(g.name))} (${bold(fmtNum(g.veiligheid.per1000))}).`,
     ], b.code));
   }
   if (b.gezondheid?.goedErvarenGezondheid != null && healthVsNl.word) {
-    parts.push(`${bold(fmtPct(b.gezondheid.goedErvarenGezondheid))} van de inwoners voelt zich gezond, ${cw(healthVsNl)} het landelijk beeld.`);
+    parts.push(`${bold(fmtPct(b.gezondheid.goedErvarenGezondheid))} van de inwoners voelt zich ${theme('gezond')}, ${cw(healthVsNl)} het landelijk beeld.`);
   }
   return parts.join(' ');
 }
@@ -585,7 +592,7 @@ function buildBuurtCrimeText(b, g, nl, crimeVsGem, crimeVsNl) {
     const dir = up ? `<strong class="neg">gestegen</strong>` : (down ? `<strong class="pos">gedaald</strong>` : bold('ongeveer gelijk gebleven'));
     trendText = ` Tussen ${years[0]} en ${years.at(-1)} is het aantal geregistreerde misdrijven ${dir}.`;
   }
-  const parts = [`In ${name} worden per jaar ongeveer ${bold(fmtNum(b.veiligheid.per1000))} misdrijven per 1.000 inwoners geregistreerd.`];
+  const parts = [`In ${name} worden per jaar ongeveer ${bold(fmtNum(b.veiligheid.per1000))} ${theme('misdrijven')} per 1.000 inwoners geregistreerd.`];
   if (crimeVsGem.word) parts.push(`Dat is ${cw(crimeVsGem)} het gemeentegemiddelde van ${bold(escapeHtml(g.name))} (${bold(fmtNum(g.veiligheid.per1000))})`);
   if (crimeVsNl.word) parts.push(`en ${cw(crimeVsNl)} het landelijk gemiddelde van ${bold(fmtNum(nl.veiligheid.per1000))}`);
   return parts.join(' ').replace(/\)\s+en /, ') en ') + '.' + trendText;
@@ -620,8 +627,8 @@ export function renderProvinciePage(p, nl, allProvincies = []) {
   const health = compare(p.gezondheid?.goedErvarenGezondheid, nl.gezondheid?.goedErvarenGezondheid);
 
   const summaryParts = [`De provincie ${bold(escapeHtml(name))} telt ${bold(fmtInt(p.aantalGemeenten))} gemeenten en ${bold(fmtInt(p.demografie?.inwoners))} inwoners.`];
-  if (crime.word) summaryParts.push(`Gemiddeld worden er ${bold(fmtNum(p.veiligheid.per1000))} misdrijven per 1.000 inwoners geregistreerd, ${cw(crime)} het landelijk gemiddelde.`);
-  if (health.word) summaryParts.push(`${bold(fmtPct(p.gezondheid.goedErvarenGezondheid))} van de inwoners voelt zich gezond, ${cw(health)} het landelijk beeld.`);
+  if (crime.word) summaryParts.push(`Gemiddeld worden er ${bold(fmtNum(p.veiligheid.per1000))} ${theme('misdrijven')} per 1.000 inwoners geregistreerd, ${cw(crime)} het landelijk gemiddelde.`);
+  if (health.word) summaryParts.push(`${bold(fmtPct(p.gezondheid.goedErvarenGezondheid))} van de inwoners voelt zich ${theme('gezond')}, ${cw(health)} het landelijk beeld.`);
 
   const faq = [
     {
@@ -722,4 +729,191 @@ function safestGemeenteAnswer(p) {
     .sort((a, b) => a.veiligheidPer1000 - b.veiligheidPer1000)[0];
   if (!g) return `Voor ${p.name} zijn geen vergelijkbare veiligheidscijfers beschikbaar.`;
   return `Van de gemeenten in ${p.name} registreert ${g.name} de minste misdrijven per 1.000 inwoners (${fmtNum(g.veiligheidPer1000)}). Cijfers zijn registraties op pleeglocatie; kleine gemeenten schommelen sterker.`;
+}
+
+// ---------- ranglijsten (nationaal, per gemeente) ----------
+// kind: 'veiligste' (minste misdrijven) of 'gezondste' (meeste ervaren gezondheid).
+const RANKING_MIN_INWONERS = 2500; // kleine gemeenten schommelen te sterk
+
+export function renderRankingGemeenten(gemeenten, nl, kind) {
+  const cfg = kind === 'gezondste'
+    ? {
+        h1a: 'Gezondste', h1b: 'gemeenten', thema: 'gezondheid',
+        metric: 'goedErvarenGezondheid', asc: false, higherIsWorse: false,
+        colLabel: 'Voelt zich gezond', fmt: fmtPct,
+        nlVal: nl.gezondheid?.goedErvarenGezondheid,
+        intro: 'gemeten aan het aandeel inwoners dat de eigen gezondheid als goed ervaart',
+        slug: 'gezondste-gemeenten', other: { slug: 'veiligste-gemeenten', label: 'Veiligste gemeenten' },
+      }
+    : {
+        h1a: 'Veiligste', h1b: 'gemeenten', thema: 'veiligheid',
+        metric: 'veiligheidPer1000', asc: true, higherIsWorse: true,
+        colLabel: 'Misdrijven per 1.000 inw.', fmt: fmtNum,
+        nlVal: nl.veiligheid?.per1000,
+        intro: 'gemeten aan het aantal geregistreerde misdrijven per 1.000 inwoners',
+        slug: 'veiligste-gemeenten', other: { slug: 'gezondste-gemeenten', label: 'Gezondste gemeenten' },
+      };
+
+  const ranked = gemeenten
+    .filter((g) => g[cfg.metric] != null && (g.inwoners || 0) >= RANKING_MIN_INWONERS)
+    .sort((a, b) => cfg.asc ? a[cfg.metric] - b[cfg.metric] : b[cfg.metric] - a[cfg.metric]);
+
+  const canonical = `${CANONICAL_ORIGIN}/${cfg.slug}`;
+  const title = `${cfg.h1a} gemeenten van Nederland (${gemeenten[0]?.peildatum || ''})`.replace(' ()', '');
+  const description = `De ${cfg.h1a.toLowerCase()} gemeenten van Nederland, ${cfg.intro}, uit open data van CBS, politie en RIVM. Ranglijst van ${ranked.length} gemeenten.`;
+  const top = ranked[0];
+
+  const summary = top
+    ? `${bold(escapeHtml(top.name))} is volgens deze cijfers de ${theme(cfg.h1a.toLowerCase())} gemeente van Nederland, met ${bold(cfg.fmt(top[cfg.metric]))} (${cfg.colLabel.toLowerCase()}). De ranglijst vergelijkt ${bold(String(ranked.length))} gemeenten met minstens ${fmtInt(RANKING_MIN_INWONERS)} inwoners, ${cfg.intro}.`
+    : 'Geen data beschikbaar.';
+
+  const faq = [
+    { q: `Wat is de ${cfg.h1a.toLowerCase()} gemeente van Nederland?`, a: top ? `${top.name}, met ${cfg.fmt(top[cfg.metric])} (${cfg.colLabel.toLowerCase()}).` : 'Geen data.' },
+    { q: 'Hoe is deze ranglijst gemaakt?', a: `Op basis van open data van CBS, de politie en het RIVM, ${cfg.intro}. Alleen gemeenten met minstens ${RANKING_MIN_INWONERS} inwoners doen mee, omdat cijfers in kleine gemeenten sterk schommelen.` },
+  ];
+
+  const jsonLd = [
+    breadcrumbLd([{ name: 'Nederland', href: '/' }, { name: `${cfg.h1a} gemeenten` }]),
+    faqLd(faq),
+    {
+      '@context': 'https://schema.org', '@type': 'ItemList', name: title,
+      itemListElement: ranked.slice(0, 20).map((g, i) => ({
+        '@type': 'ListItem', position: i + 1, name: g.name, url: `${CANONICAL_ORIGIN}/gemeente/${g.slug}`,
+      })),
+    },
+  ];
+
+  const rows = ranked.map((g, i) => `<tr>
+    <td class="rank">${i + 1}</td>
+    <td><a href="/gemeente/${g.slug}">${escapeHtml(g.name)}</a></td>
+    <td class="num">${fmtInt(g.inwoners)}</td>
+    <td class="num">${colorCell(g[cfg.metric], cfg.nlVal, { higherIsWorse: cfg.higherIsWorse }, cfg.fmt)}</td>
+  </tr>`).join('');
+
+  return `${head({ title, description, canonical, jsonLd })}
+<body>
+  <header>
+    <div class="hero">
+      <p class="eyebrow"><span class="brand-sq" aria-hidden="true"></span> Ranglijst</p>
+      <h1 class="hero-h1">${cfg.h1a} <span class="accent">${cfg.h1b}</span> van Nederland</h1>
+      <p class="tagline">De ${cfg.h1a.toLowerCase()} gemeenten van Nederland, ${cfg.intro}. Uit open data van CBS, politie en RIVM.</p>
+    </div>
+  </header>
+
+  <main>
+    ${breadcrumb([{ name: 'Nederland', href: '/' }, { name: `${cfg.h1a} gemeenten` }])}
+
+    <section class="ai-overview" aria-label="Samenvatting"><p>${summary}</p></section>
+
+    <section class="doc-section">
+      <h2>Ranglijst</h2>
+      <div class="table-scroll"><table class="doc-table ranking-table">
+        <thead><tr><th class="rank">#</th><th>Gemeente</th><th class="num">Inwoners</th><th class="num">${cfg.colLabel}</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+      <p class="doc-note">Nederland: ${cfg.fmt(cfg.nlVal)}. Alleen gemeenten met minstens ${fmtInt(RANKING_MIN_INWONERS)} inwoners. Bron: CBS, politie, RIVM, ${escapeHtml(gemeenten[0]?.peildatum || '')}.</p>
+    </section>
+
+    ${renderFaq(faq)}
+
+    <section class="doc-section">
+      <h2>Meer ranglijsten</h2>
+      <nav class="doc-links">
+        <a class="doc-link" href="/${cfg.other.slug}">${cfg.other.label}</a>
+        <a class="doc-link" href="/onderzoek/veiligste-buurten-2026">Veiligste buurten 2026</a>
+      </nav>
+    </section>
+
+    <section class="doc-section">
+      <h2>Bronnen</h2>
+      <p>Zie <a href="/bronnen">alle databronnen</a> en de <a href="/methode">methode</a>. De volledige leefscore per postcode reken je op de <a href="/">homepage</a> uit.</p>
+    </section>
+  </main>
+
+${footer()}
+
+  <script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "fa781ea439e94009bce291b6c446d2cf"}'></script>
+</body>
+</html>`;
+}
+
+// ---------- onderzoek: veiligste buurten van Nederland ----------
+export function renderOnderzoekBuurten(data, nl, year) {
+  const lijst = data.veiligste || [];
+  const canonical = `${CANONICAL_ORIGIN}/onderzoek/veiligste-buurten-${year}`;
+  const title = `De veiligste buurten van Nederland ${year}`;
+  const description = `Onderzoek ${year}: de ${lijst.length} veiligste buurten van Nederland op basis van geregistreerde misdrijven per 1.000 inwoners (CBS, politie).`;
+  const top = lijst[0];
+
+  const summary = top
+    ? `In dit onderzoek van ${year} is ${bold(escapeHtml(top.buurt))} in ${bold(escapeHtml(top.gemeente))} de ${theme('veiligste')} buurt van Nederland, met ${bold(fmtNum(top.per1000))} geregistreerde ${theme('misdrijven')} per 1.000 inwoners. De lijst vergelijkt ${bold(fmtInt(data.aantalMeegenomen))} buurten met minstens ${fmtInt(data.minInwoners)} inwoners.`
+    : 'Geen data beschikbaar.';
+
+  const faq = [
+    { q: `Wat is de veiligste buurt van Nederland in ${year}?`, a: top ? `${top.buurt} in ${top.gemeente}, met ${fmtNum(top.per1000)} geregistreerde misdrijven per 1.000 inwoners.` : 'Geen data.' },
+    { q: 'Hoe is dit onderzoek uitgevoerd?', a: `Voor elke buurt in Nederland met minstens ${data.minInwoners} inwoners is het aantal geregistreerde misdrijven per 1.000 inwoners over de laatste twaalf maanden berekend (politie via CBS). De buurten zijn daarop gerangschikt. In totaal zijn ${data.aantalMeegenomen} buurten meegenomen.` },
+    { q: 'Betekent een lage score dat een buurt echt veilig is?', a: 'Het gaat om geregistreerde misdrijven op pleeglocatie; niet elk misdrijf wordt aangegeven, en woonwijken scoren van nature lager dan winkel- of uitgaansgebieden. De cijfers zijn een indicatie, geen absoluut oordeel.' },
+  ];
+
+  const jsonLd = [
+    breadcrumbLd([{ name: 'Nederland', href: '/' }, { name: 'Onderzoek', href: '/onderzoek/veiligste-buurten-2026' }, { name: `Veiligste buurten ${year}` }]),
+    faqLd(faq),
+    {
+      '@context': 'https://schema.org', '@type': 'ItemList', name: title,
+      itemListElement: lijst.slice(0, 20).map((b, i) => ({
+        '@type': 'ListItem', position: i + 1, name: `${b.buurt} (${b.gemeente})`,
+        url: `${CANONICAL_ORIGIN}/gemeente/${b.gemeenteSlug}/${b.buurtSlug}`,
+      })),
+    },
+  ];
+
+  const rows = lijst.map((b, i) => `<tr>
+    <td class="rank">${i + 1}</td>
+    <td><a href="/gemeente/${b.gemeenteSlug}/${b.buurtSlug}">${escapeHtml(b.buurt)}</a></td>
+    <td><a href="/gemeente/${b.gemeenteSlug}">${escapeHtml(b.gemeente)}</a></td>
+    <td class="num">${fmtInt(b.inwoners)}</td>
+    <td class="num">${colorCell(b.per1000, nl.veiligheid?.per1000, { higherIsWorse: true }, fmtNum)}</td>
+  </tr>`).join('');
+
+  return `${head({ title, description, canonical, jsonLd })}
+<body>
+  <header>
+    <div class="hero">
+      <p class="eyebrow"><span class="brand-sq" aria-hidden="true"></span> Onderzoek ${year}</p>
+      <h1 class="hero-h1">De veiligste <span class="accent">buurten</span> van Nederland</h1>
+      <p class="tagline">Welke buurten registreren de minste misdrijven per inwoner? Een ranglijst uit open data van politie en CBS, editie ${year}.</p>
+    </div>
+  </header>
+
+  <main>
+    ${breadcrumb([{ name: 'Nederland', href: '/' }, { name: `Veiligste buurten ${year}` }])}
+
+    <section class="ai-overview" aria-label="Samenvatting"><p>${summary}</p></section>
+
+    <section class="doc-section">
+      <h2>Top ${lijst.length} veiligste buurten van Nederland</h2>
+      <div class="table-scroll"><table class="doc-table ranking-table">
+        <thead><tr><th class="rank">#</th><th>Buurt</th><th>Gemeente</th><th class="num">Inwoners</th><th class="num">Misdrijven /1.000</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+      <p class="doc-note">Landelijk gemiddelde: ${fmtNum(nl.veiligheid?.per1000)} misdrijven per 1.000 inwoners. ${fmtInt(data.aantalMeegenomen)} buurten met minstens ${fmtInt(data.minInwoners)} inwoners meegewogen. Bron: politie via CBS (tabel 47022NED), ${escapeHtml(data.peildatum)}.</p>
+    </section>
+
+    ${renderFaq(faq)}
+
+    <section class="doc-section">
+      <h2>Verder</h2>
+      <nav class="doc-links">
+        <a class="doc-link" href="/veiligste-gemeenten">Veiligste gemeenten</a>
+        <a class="doc-link" href="/gezondste-gemeenten">Gezondste gemeenten</a>
+        <a class="doc-link" href="/methode">Methode</a>
+      </nav>
+    </section>
+  </main>
+
+${footer()}
+
+  <script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "fa781ea439e94009bce291b6c446d2cf"}'></script>
+</body>
+</html>`;
 }

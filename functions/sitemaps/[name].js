@@ -6,7 +6,8 @@ import { CITIES, CANONICAL_ORIGIN } from '../_cities.js';
 import { DATASETS } from '../_datasets.js';
 import { loadData } from '../_pages.js';
 
-const INFO_PAGES = ['/methode', '/bronnen', '/over', '/pers'];
+const INFO_PAGES = ['/methode', '/bronnen', '/over', '/pers',
+  '/veiligste-gemeenten', '/gezondste-gemeenten', '/onderzoek/veiligste-buurten-2026'];
 
 function xml(urls) {
   return `<?xml version="1.0" encoding="UTF-8"?>

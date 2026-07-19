@@ -602,7 +602,12 @@ async function buildIndex(built, provinces, nl) {
     schemaVersion: SCHEMA_VERSION,
     peildatum: PEILDATUM,
     gemeenten: built
-      .map((g) => ({ code: g.code, slug: g.slug, name: g.name, provincie: g.provincie.slug, inwoners: g.inwoners }))
+      .map((g) => ({
+        code: g.code, slug: g.slug, name: g.name, provincie: g.provincie.slug,
+        inwoners: g.inwoners,
+        veiligheidPer1000: g.veiligheidPer1000,
+        goedErvarenGezondheid: g.goedErvarenGezondheid,
+      }))
       .sort((a, b) => a.name.localeCompare(b.name)),
   });
   await writeJson(join(DATA_DIR, 'provincies.json'), {
@@ -627,6 +632,31 @@ async function buildIndex(built, provinces, nl) {
     schemaVersion: SCHEMA_VERSION,
     peildatum: PEILDATUM,
     buurten,
+  });
+
+  // Vooraf berekende ranglijst voor het jaarlijkse onderzoek: de veiligste
+  // buurten van Nederland. Minimaal 1.000 inwoners zodat het om substantiële
+  // buurten gaat (kleine buurten schommelen te sterk voor een landelijke lijst).
+  const nationaalBuurten = [];
+  for (const g of built) {
+    for (const b of (g.buurten || [])) {
+      if ((b.inwoners || 0) >= 1000 && b.per1000 != null) {
+        nationaalBuurten.push({
+          buurt: b.name, buurtSlug: b.slug,
+          gemeente: g.name, gemeenteSlug: g.slug,
+          provincie: g.provincie.name,
+          inwoners: b.inwoners, per1000: b.per1000,
+        });
+      }
+    }
+  }
+  nationaalBuurten.sort((a, b) => a.per1000 - b.per1000);
+  await writeJson(join(DATA_DIR, 'onderzoek-buurten.json'), {
+    schemaVersion: SCHEMA_VERSION,
+    peildatum: PEILDATUM,
+    minInwoners: 1000,
+    aantalMeegenomen: nationaalBuurten.length,
+    veiligste: nationaalBuurten.slice(0, 100),
   });
 }
 
