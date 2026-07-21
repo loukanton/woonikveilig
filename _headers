@@ -1,7 +1,9 @@
 # CSS/JS altijd laten hervalideren, zodat bezoekers na een deploy nooit een
 # oude opmaak uit hun browsercache zien (304 als niets veranderde, goedkoop).
-# LET OP: werkt pas als de Cloudflare Browser Cache TTL op "Respect Existing
-# Headers" staat; nu overschrijft een zone-instelling (4 uur) deze headers.
+# Werkt alleen zolang de Cloudflare Browser Cache TTL op "Respect Existing
+# Headers" staat (Caching > Configuration). Stond die op een vaste waarde, dan
+# overschreef de zone deze headers en zagen terugkerende bezoekers na een deploy
+# urenlang de oude app.js. Sinds 21-07-2026 staat hij goed; zet hem nooit terug.
 /style.css
   Cache-Control: public, max-age=0, must-revalidate
 /app.js
