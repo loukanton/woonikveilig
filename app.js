@@ -309,6 +309,20 @@ const initialParams = new URLSearchParams(location.search);
 const sharedAddress = initialParams.get('adres');
 const sharedPostcode = initialParams.get('pc');
 const sharedBuurt = initialParams.get('buurt');
+
+// Wie via een deel- of embed-link binnenkomt moet het rapport zien en niet de
+// homepage-header erboven; zonder dit lijkt de link op de homepage uit te komen.
+// Eén keer, zodat een zoekopdracht die de bezoeker daarna zelf typt de pagina
+// niet onder hem vandaan trekt.
+let reportScrollPending = Boolean(sharedAddress || sharedPostcode || sharedBuurt);
+
+function scrollToReportOnce() {
+  if (!reportScrollPending) return;
+  reportScrollPending = false;
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  resultEl.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+}
+
 if (sharedAddress) {
   input.value = sharedAddress;
   lookup(sharedAddress);
@@ -419,6 +433,7 @@ async function performLookup(geocodeFn) {
       omgeving: { flood, nuclear, industry, military: nearestMilitary(place.lon, place.lat), powerline, external },
     });
     hideStatus();
+    scrollToReportOnce(); // pas hier: de statusmelding is weg, dus de hoogte klopt
   } catch (err) {
     console.error(err);
     showStatus(err.userMessage ?? 'Er ging iets mis bij het ophalen van de data. Probeer het later opnieuw.', true);
