@@ -300,10 +300,19 @@ function flashButton(button, message) {
 }
 
 // Gedeelde link geopend? Dan direct het rapport laden.
+// ?adres= draagt een volledig adres mét huisnummer en is bedoeld voor embeds op
+// woningpagina's van makelaars, waar dat adres toch al op de pagina staat. De
+// deelknop zet deze parameter nooit zelf neer: die houdt het bij ?pc=, zodat
+// niemand ongewild zijn eigen voordeur rondstuurt. Na het renderen zet
+// updateShareUrl de URL alsnog terug naar de postcode.
 const initialParams = new URLSearchParams(location.search);
+const sharedAddress = initialParams.get('adres');
 const sharedPostcode = initialParams.get('pc');
 const sharedBuurt = initialParams.get('buurt');
-if (sharedPostcode) {
+if (sharedAddress) {
+  input.value = sharedAddress;
+  lookup(sharedAddress);
+} else if (sharedPostcode) {
   input.value = sharedPostcode;
   lookup(sharedPostcode);
 } else if (sharedBuurt) {
